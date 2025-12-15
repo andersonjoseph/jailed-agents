@@ -1,22 +1,23 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
     jail-nix.url = "sourcehut:~alexdavid/jail.nix";
     llm-agents.url = "github:numtide/llm-agents.nix";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, jail-nix, llm-agents, ... }:
-  let 
-    system = "x86_64-linux";
+  outputs = { self, nixpkgs, jail-nix, llm-agents, flake-utils, ... }:
+  flake-utils.lib.eachDefaultSystem (system: 
+  let
     pkgs = import nixpkgs {
-      system = system;
+      inherit system;
       config.allowUnfree = true;
     };
     jail = jail-nix.lib.init pkgs;
     crush-pkg = llm-agents.packages.${system}.crush;
-  in 
-  {
-    jailed-crush = jail "jailed-crush" crush-pkg (with jail.combinators; [
+
+    makeJailedCrush = { extraPkgs ? [] }: jail "jailed-crush" crush-pkg (with jail.combinators; [
 	network
 	time-zone
 	no-new-session
@@ -42,18 +43,20 @@
 	  pkgs.unzip
 	  pkgs.gnutar
 	  pkgs.diffutils
-
-	  pkgs.gopls
-	  pkgs.go
 	])
+
+	(add-pkg-deps extraPkgs)
     ]);
+  in 
+  {
+    lib = {
+      inherit makeJailedCrush;
+    };
 
-    packages.${system}.default = self.jailed-crush;
-
-    devShells.${system}.default = pkgs.mkShell {
+    devShells.default = pkgs.mkShell {
       packages = [
-	self.jailed-crush
+	(makeJailedCrush {})
       ];
     };
-  };
+  });
 }
