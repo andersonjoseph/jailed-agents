@@ -7,7 +7,7 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, jail-nix, llm-agents, flake-utils, ... }:
+  outputs = { nixpkgs, jail-nix, llm-agents, flake-utils, ... }:
   flake-utils.lib.eachDefaultSystem (system: 
   let
     pkgs = import nixpkgs {
@@ -55,6 +55,8 @@
 
     devShells.default = pkgs.mkShell {
       packages = [
+	pkgs.nixd
+
 	(makeJailedCrush {})
       ];
     };
