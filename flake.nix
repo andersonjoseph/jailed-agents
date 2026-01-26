@@ -129,7 +129,7 @@
       {
         lib = {
           inherit commonJailOptions;
-          inherit commonPkgs;
+
           inherit makeJailedAgent;
           inherit makeJailedCrush;
           inherit makeJailedOpencode;
