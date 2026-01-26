@@ -9,11 +9,43 @@ Secure Nix sandbox for LLM agents. Run AI coding agents in isolated environments
 ## Features
 
 - **Zero-trust sandbox** - No access to your home directory, SSH keys, or sensitive files by default
+- **What's included by default** - 14 common packages (bash, curl, wget, jq, git, ripgrep, etc.) and 4 jail options (network, time-zone, no-new-session, mount-cwd)
 - **Composable building blocks** - Reuse common configurations and create custom jails
 - **Pre-configured agents** - Ready-to-use jails for `crush` and `opencode` agents
 - **Custom agent builder** - Create secure jails for any agent with `makeJailedAgent`
 - **Configurable tools** - Explicitly approve which commands and packages the agent can use
 - **Seamless Nix integration** - Works perfectly with your existing Nix Flakes setup
+
+## What's Included by Default
+
+### Common Packages
+
+All jailed agents include these packages by default:
+
+- `bashInteractive` - Interactive bash shell
+- `curl` - Command-line tool for transferring data
+- `wget` - Network downloader
+- `jq` - Command-line JSON processor
+- `git` - Version control system
+- `which` - Locate a command
+- `ripgrep` - Fast recursive search
+- `gnugrep` - Pattern search utility
+- `gawkInteractive` - Text processing language
+- `ps` - Process status
+- `findutils` - Find utilities
+- `gzip` - Compression utility
+- `unzip` - Extract compressed archives
+- `gnutar` - Archiving utility
+- `diffutils` - File comparison utilities
+
+### Common Jail Options
+
+All jails include these base options:
+
+- `network` - Network access
+- `time-zone` - System timezone
+- `no-new-session` - Prevent session creation
+- `mount-cwd` - Mount current working directory
 
 ## Installation
 
@@ -222,7 +254,7 @@ makeJailed<agent-name> {
 - `makeJailedCrush` - Pre-configured with crush's config paths
 - `makeJailedOpencode` - Pre-configured with opencode's config paths
 
-Each builder includes agent-specific config paths for a seamless experience out of the box.
+Each builder includes agent-specific config paths (see "What's Included by Default" section above) for a seamless experience out of the box.
 
 ### makeJailedAgent
 
