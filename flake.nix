@@ -143,7 +143,13 @@
             pkgs.statix
 
             (makeJailedCrush { })
-            (makeJailedOpencode { })
+            (makeJailedOpencode {
+              extraPkgs = [
+                pkgs.nixd
+                pkgs.nixfmt
+                pkgs.statix
+              ];
+            })
           ];
         };
       }
