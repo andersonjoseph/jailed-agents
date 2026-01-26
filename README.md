@@ -20,7 +20,7 @@ Secure Nix sandbox for LLM agents. Run AI coding agents in isolated environments
 Add `jailed-agents` as a flake input:
 
 ```nix
-inputs.jailed-agents.url = "github:username/jailed-agents";
+inputs.jailed-agents.url = "github:andersonjoseph/jailed-agents";
 ```
 
 ## Quick Start
@@ -29,7 +29,7 @@ inputs.jailed-agents.url = "github:username/jailed-agents";
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    jailed-agents.url = "github:username/jailed-agents";
+    jailed-agents.url = "github:andersonjoseph/jailed-agents";
   };
 
   outputs = { nixpkgs, jailed-agents, ... }:
@@ -39,7 +39,6 @@ inputs.jailed-agents.url = "github:username/jailed-agents";
     in {
       devShells.${system}.default = pkgs.mkShell {
         packages = [
-          (jailed-agents.lib.${system}.makeJailedCrush {})
           (jailed-agents.lib.${system}.makeJailedOpencode {})
         ];
       };
@@ -47,42 +46,86 @@ inputs.jailed-agents.url = "github:username/jailed-agents";
 }
 ```
 
-Run `nix develop` and you'll have `jailed-crush` and `jailed-opencode` commands available.
+Run `nix develop` and you'll have the `jailed-opencode` command available. The same pattern works for all pre-configured agents.
+
+## Available Pre-Configured Agents
+
+| Agent | Maker Function | Default Command |
+|-------|----------------|-----------------|
+| `crush` | `makeJailedCrush` | `jailed-crush` |
+| `opencode` | `makeJailedOpencode` | `jailed-opencode` |
+
+Each agent comes with pre-configured config paths and sensible defaults. See the API Reference for customization options.
 
 ## Usage Examples
 
 ### Basic Usage
 
 ```nix
-(jailed-agents.lib.${system}.makeJailedCrush {})
 (jailed-agents.lib.${system}.makeJailedOpencode {})
 ```
 
-### Custom Command Names
+All pre-configured agents follow this pattern - just replace `makeJailedOpencode` with the agent builder you want (e.g., `makeJailedCrush`).
+
+### Customizing Pre-Configured Agents
+
+By default, pre-configured agents use packages from [`llm-agents.nix`](https://github.com/numtide/llm-agents.nix). You can override any option:
 
 ```nix
-# Use default names: jailed-crush, jailed-opencode
-(jailed-agents.lib.${system}.makeJailedCrush {})
-(jailed-agents.lib.${system}.makeJailedOpencode {})
+# Use a custom package
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  pkg = pkgs.my-custom-opencode;
+})
 
-# Customize the command names
-(jailed-agents.lib.${system}.makeJailedCrush { name = "crush"; })
-(jailed-agents.lib.${system}.makeJailedOpencode { name = "secure-opencode"; })
+# Combine custom package with custom name and extra packages
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  name = "secure-opencode";
+  pkg = pkgs.opencode_2_0;
+  extraPkgs = [ pkgs.nodejs pkgs.python3 ];
+})
+
+# Mount additional directories
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  extraReadwriteDirs = ["~/projects"];
+  extraReadonlyDirs = ["~/readonly-cache"];
+})
 ```
 
 > **Note:** Default command names use the `jailed-` prefix (e.g., `jailed-crush`, `jailed-opencode`) to make it explicit that these are sandboxed versions with restricted permissions. This helps prevent confusion:
 >
 > - **Expected behavior:** Permission denied errors are normal when the agent tries to access files outside its sandbox
-> - **Not a bug:** If you encounter permission issues, the agent is working correctly—it's the sandbox enforcing security
+> - **Not a bug:** If you encounter permission issues, the agent is working correctly. It's the sandbox enforcing security
 > - **Customize access:** You can customize jail options (e.g., mount additional directories) or open a PR to add missing state/config paths if they should be accessible by default
 
-### Adding Extra Packages
+### Mount Additional Directories
+
+You can mount additional directories with read-write or read-only access:
 
 ```nix
+# Mount directories with read-write access
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  extraReadwriteDirs = [
+    "~/projects"
+    "~/custom-config"
+  ];
+})
+
+# Mount directories with read-only access
 (jailed-agents.lib.${system}.makeJailedCrush {
-  extraPkgs = [ pkgs.nodejs pkgs.python3 ];
+  extraReadonlyDirs = [
+    "~/readonly-cache"
+    "/usr/share/something"
+  ];
+})
+
+# Combine both
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  extraReadwriteDirs = ["~/projects"];
+  extraReadonlyDirs = ["~/readonly-cache"];
 })
 ```
+
+For advanced custom jail options (beyond directory mounting), see the [jail.nix combinators documentation](https://alexdav.id/projects/jail-nix/combinators/).
 
 ### Go Development Example
 
@@ -92,7 +135,7 @@ Run `nix develop` and you'll have `jailed-crush` and `jailed-opencode` commands 
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    jailed-agents.url = "github:username/jailed-agents";
+    jailed-agents.url = "github:andersonjoseph/jailed-agents";
   };
 
   outputs = { nixpkgs, jailed-agents }:
@@ -129,6 +172,8 @@ Run `nix develop` and you'll have `jailed-crush` and `jailed-opencode` commands 
 
 ### Custom Agent
 
+Use `makeJailedAgent` for agents not pre-configured by `jailed-agents`:
+
 ```nix
 (jailed-agents.lib.${system}.makeJailedAgent {
   name = "my-custom-agent";
@@ -144,45 +189,40 @@ Run `nix develop` and you'll have `jailed-crush` and `jailed-opencode` commands 
 })
 ```
 
+> **Tip:** For supported agents (`crush`, `opencode`), prefer `makeJailedCrush`/`makeJailedOpencode` over `makeJailedAgent` for pre-configured paths and simpler API. Use `makeJailedAgent` only for unsupported agents or when you need full control over the configuration.
+
 ## API Reference
 
-### makeJailedCrush
+### Pre-Configured Agent Builders
+
+All pre-configured agents follow the same pattern:
 
 ```nix
-makeJailedCrush {
-  name ? "jailed-crush",
+makeJailed<agent-name> {
+  name ? "jailed-agentname",
+  pkg ? default-pkg,
   extraPkgs ? [],
+  extraReadwriteDirs ? [],
+  extraReadonlyDirs ? [],
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
 }
 ```
 
-Creates a jailed environment for the `crush` agent.
-
 **Parameters:**
-- `name` - The command name (default: "jailed-crush")
+- `name` - The command name (default: `"jailed-<agentname>"`)
+- `pkg` - The agent package (default: from llm-agents.nix)
 - `extraPkgs` - Additional packages to include (optional)
+- `extraReadwriteDirs` - Additional directories to mount read/write (optional)
+- `extraReadonlyDirs` - Additional directories to mount read-only (optional)
 - `baseJailOptions` - Override base jail options (optional)
 - `basePackages` - Override base package set (optional)
 
-### makeJailedOpencode
+**Available Builders:**
+- `makeJailedCrush` - Pre-configured with crush's config paths
+- `makeJailedOpencode` - Pre-configured with opencode's config paths
 
-```nix
-makeJailedOpencode {
-  name ? "jailed-opencode",
-  extraPkgs ? [],
-  baseJailOptions ? commonJailOptions,
-  basePackages ? commonPkgs
-}
-```
-
-Creates a jailed environment for the `opencode` agent.
-
-**Parameters:**
-- `name` - The command name (default: "jailed-opencode")
-- `extraPkgs` - Additional packages to include (optional)
-- `baseJailOptions` - Override base jail options (optional)
-- `basePackages` - Override base package set (optional)
+Each builder includes agent-specific config paths for a seamless experience out of the box.
 
 ### makeJailedAgent
 
@@ -192,6 +232,8 @@ makeJailedAgent {
   pkg,
   configPaths,
   extraPkgs ? [],
+  extraReadwriteDirs ? [],
+  extraReadonlyDirs ? [],
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
 }
@@ -204,6 +246,8 @@ Creates a generic jailed environment for any agent.
 - `pkg` - The agent package to run
 - `configPaths` - List of paths to mount read/write (e.g., `["~/.config/my-app"]`)
 - `extraPkgs` - Additional packages to include (optional)
+- `extraReadwriteDirs` - Additional directories to mount read/write (optional)
+- `extraReadonlyDirs` - Additional directories to mount read-only (optional)
 - `baseJailOptions` - Override base jail options (optional)
 - `basePackages` - Override base package set (optional)
 
@@ -211,12 +255,10 @@ Creates a generic jailed environment for any agent.
 
 ```nix
 {
-  inherit commonJailOptions;  # Base jail configuration
-  inherit commonPkgs;         # Base package set
-  inherit jail;               # Raw jail reference for custom builds
-  inherit makeJailedAgent;    # Generic builder
-  inherit makeJailedCrush;     # Crush agent builder
-  inherit makeJailedOpencode; # Opencode agent builder
+  inherit commonJailOptions;   # Base jail configuration
+  inherit commonPkgs;          # Base package set
+  inherit makeJailedAgent;     # Generic builder for any agent
+  inherit makeJailed<agent-name>;    # Pre-configured <agent-name> agent builder
 }
 ```
 

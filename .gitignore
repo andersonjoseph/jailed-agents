@@ -1,0 +1,21 @@
+# Nix build outputs
+result
+result-*
+
+# Crush agent state
+.crush/
+
+# Direnv
+.direnv/
+.envrc
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

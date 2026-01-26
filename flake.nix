@@ -25,10 +25,6 @@
           config.allowUnfree = true;
         };
         jail = jail-nix.lib.init pkgs;
-
-        crush-pkg = llm-agents.packages.${system}.crush;
-        opencode-pkg = llm-agents.packages.${system}.opencode;
-
         commonPkgs = with pkgs; [
           bashInteractive
           curl
@@ -60,6 +56,8 @@
             pkg,
             configPaths,
             extraPkgs ? [ ],
+            extraReadwriteDirs ? [ ],
+            extraReadonlyDirs ? [ ],
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
@@ -67,7 +65,8 @@
             with jail.combinators;
             (
               baseJailOptions
-              ++ (map (p: readwrite (noescape p)) configPaths)
+              ++ (map (p: readwrite (noescape p)) (configPaths ++ extraReadwriteDirs))
+              ++ (map (p: readonly (noescape p)) extraReadonlyDirs)
               ++ [ (add-pkg-deps basePackages) ]
               ++ [ (add-pkg-deps extraPkgs) ]
             )
@@ -76,59 +75,66 @@
         makeJailedCrush =
           {
             name ? "jailed-crush",
+            pkg ? llm-agents.packages.${system}.crush,
             extraPkgs ? [ ],
+            extraReadwriteDirs ? [ ],
+            extraReadonlyDirs ? [ ],
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
-          jail name crush-pkg (
-            with jail.combinators;
-            (
+          makeJailedAgent {
+            inherit
+              name
+              pkg
+              extraPkgs
+              extraReadwriteDirs
+              extraReadonlyDirs
               baseJailOptions
-              ++ [
-                (readwrite (noescape "~/.config/crush"))
-                (readwrite (noescape "~/.local/share/crush"))
-
-                (add-pkg-deps basePackages)
-
-                (add-pkg-deps extraPkgs)
-              ]
-            )
-          );
+              basePackages
+              ;
+            configPaths = [
+              "~/.config/crush"
+              "~/.local/share/crush"
+            ];
+          };
 
         makeJailedOpencode =
           {
             name ? "jailed-opencode",
+            pkg ? llm-agents.packages.${system}.opencode,
             extraPkgs ? [ ],
+            extraReadwriteDirs ? [ ],
+            extraReadonlyDirs ? [ ],
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
-          jail name opencode-pkg (
-            with jail.combinators;
-            (
+          makeJailedAgent {
+            inherit
+              name
+              pkg
+              extraPkgs
+              extraReadwriteDirs
+              extraReadonlyDirs
               baseJailOptions
-              ++ [
-                (readwrite (noescape "~/.config/opencode"))
-                (readwrite (noescape "~/.local/share/opencode"))
-                (readwrite (noescape "~/.local/state/opencode"))
-
-                (add-pkg-deps basePackages)
-
-                (add-pkg-deps extraPkgs)
-              ]
-            )
-          );
+              basePackages
+              ;
+            configPaths = [
+              "~/.config/opencode"
+              "~/.local/share/opencode"
+              "~/.local/state/opencode"
+            ];
+          };
 
       in
       {
         lib = {
           inherit commonJailOptions;
           inherit commonPkgs;
-          inherit jail;
           inherit makeJailedAgent;
           inherit makeJailedCrush;
           inherit makeJailedOpencode;
         };
-        formatter = flake-utils.lib.eachDefaultSystem (system: pkgs.nixfmt-tree);
+        formatter = pkgs.nixfmt-tree;
 
         devShells.default = pkgs.mkShell {
           packages = [
