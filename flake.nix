@@ -75,11 +75,12 @@
 
         makeJailedCrush =
           {
+            name ? "jailed-crush",
             extraPkgs ? [ ],
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
-          jail "jailed-crush" crush-pkg (
+          jail name crush-pkg (
             with jail.combinators;
             (
               baseJailOptions
@@ -96,11 +97,12 @@
 
         makeJailedOpencode =
           {
+            name ? "jailed-opencode",
             extraPkgs ? [ ],
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
-          jail "jailed-opencode" opencode-pkg (
+          jail name opencode-pkg (
             with jail.combinators;
             (
               baseJailOptions

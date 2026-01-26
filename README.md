@@ -58,6 +58,24 @@ Run `nix develop` and you'll have `jailed-crush` and `jailed-opencode` commands 
 (jailed-agents.lib.${system}.makeJailedOpencode {})
 ```
 
+### Custom Command Names
+
+```nix
+# Use default names: jailed-crush, jailed-opencode
+(jailed-agents.lib.${system}.makeJailedCrush {})
+(jailed-agents.lib.${system}.makeJailedOpencode {})
+
+# Customize the command names
+(jailed-agents.lib.${system}.makeJailedCrush { name = "crush"; })
+(jailed-agents.lib.${system}.makeJailedOpencode { name = "secure-opencode"; })
+```
+
+> **Note:** Default command names use the `jailed-` prefix (e.g., `jailed-crush`, `jailed-opencode`) to make it explicit that these are sandboxed versions with restricted permissions. This helps prevent confusion:
+>
+> - **Expected behavior:** Permission denied errors are normal when the agent tries to access files outside its sandbox
+> - **Not a bug:** If you encounter permission issues, the agent is working correctly—it's the sandbox enforcing security
+> - **Customize access:** You can customize jail options (e.g., mount additional directories) or open a PR to add missing state/config paths if they should be accessible by default
+
 ### Adding Extra Packages
 
 ```nix
@@ -132,6 +150,7 @@ Run `nix develop` and you'll have `jailed-crush` and `jailed-opencode` commands 
 
 ```nix
 makeJailedCrush {
+  name ? "jailed-crush",
   extraPkgs ? [],
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
@@ -140,10 +159,17 @@ makeJailedCrush {
 
 Creates a jailed environment for the `crush` agent.
 
+**Parameters:**
+- `name` - The command name (default: "jailed-crush")
+- `extraPkgs` - Additional packages to include (optional)
+- `baseJailOptions` - Override base jail options (optional)
+- `basePackages` - Override base package set (optional)
+
 ### makeJailedOpencode
 
 ```nix
 makeJailedOpencode {
+  name ? "jailed-opencode",
   extraPkgs ? [],
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
@@ -151,6 +177,12 @@ makeJailedOpencode {
 ```
 
 Creates a jailed environment for the `opencode` agent.
+
+**Parameters:**
+- `name` - The command name (default: "jailed-opencode")
+- `extraPkgs` - Additional packages to include (optional)
+- `baseJailOptions` - Override base jail options (optional)
+- `basePackages` - Override base package set (optional)
 
 ### makeJailedAgent
 
