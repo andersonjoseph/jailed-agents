@@ -1,4 +1,6 @@
 {
+  description = "Secure Nix sandbox for LLM agents - Run AI coding agents in isolated environments with controlled access";
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
