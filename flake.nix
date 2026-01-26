@@ -133,6 +133,10 @@
           inherit makeJailedAgent;
           inherit makeJailedCrush;
           inherit makeJailedOpencode;
+
+          internals = {
+            inherit jail;
+          };
         };
         formatter = pkgs.nixfmt-tree;
 

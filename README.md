@@ -4,58 +4,29 @@ Secure Nix sandbox for LLM agents. Run AI coding agents in isolated environments
 
 ## What is it?
 
-`jailed-agents` provides a secure sandbox for running LLM coding agents using Nix and `jail.nix` (built on `bubblewrap`). It gives your AI agents the autonomy to be useful without giving them full access to your system.
+`jailed-agents` provides a secure sandbox for running LLM coding agents using Nix and `jail.nix` (which is built on `bubblewrap`). It gives your AI agents the autonomy to be useful without giving them full access to your system.
 
 ## Features
 
-- **Zero-trust sandbox** - No access to your home directory, SSH keys, or sensitive files by default
-- **What's included by default** - 14 common packages (bash, curl, wget, jq, git, ripgrep, etc.) and 4 jail options (network, time-zone, no-new-session, mount-cwd)
-- **Composable building blocks** - Reuse common configurations and create custom jails
-- **Pre-configured agents** - Ready-to-use jails for `crush` and `opencode` agents
-- **Custom agent builder** - Create secure jails for any agent with `makeJailedAgent`
-- **Configurable tools** - Explicitly approve which commands and packages the agent can use
-- **Seamless Nix integration** - Works perfectly with your existing Nix Flakes setup
-
-## What's Included by Default
-
-### Common Packages
-
-All jailed agents include these packages by default:
-
-- `bashInteractive` - Interactive bash shell
-- `curl` - Command-line tool for transferring data
-- `wget` - Network downloader
-- `jq` - Command-line JSON processor
-- `git` - Version control system
-- `which` - Locate a command
-- `ripgrep` - Fast recursive search
-- `gnugrep` - Pattern search utility
-- `gawkInteractive` - Text processing language
-- `ps` - Process status
-- `findutils` - Find utilities
-- `gzip` - Compression utility
-- `unzip` - Extract compressed archives
-- `gnutar` - Archiving utility
-- `diffutils` - File comparison utilities
-
-### Common Jail Options
-
-All jails include these base options:
-
-- `network` - Network access
-- `time-zone` - System timezone
-- `no-new-session` - Prevent session creation
-- `mount-cwd` - Mount current working directory
+- **Zero-Trust Sandbox**: By default, agents have no access to your home directory, SSH keys, or other sensitive files.
+- **Sensible Defaults**: Comes with a curated set of 14 common packages and secure jail options enabled out-of-the-box.
+- **Composable**: Reuse common configurations to create custom, sandboxed environments for your agents.
+- **Pre-configured Agents**: Ready-to-use jails for popular agents like `crush` and `opencode`.
+- **Custom Agent Builder**: Easily create secure jails for any agent with the `makeJailedAgent` function.
+- **Declarative Tooling**: Explicitly define which commands, packages, and directories the agent can access.
+- **Seamless Nix Integration**: Works perfectly with your existing Nix Flakes setup.
 
 ## Installation
 
-Add `jailed-agents` as a flake input:
+Add `jailed-agents` as an input to your `flake.nix`:
 
 ```nix
 inputs.jailed-agents.url = "github:andersonjoseph/jailed-agents";
 ```
 
 ## Quick Start
+
+To get started, add a pre-configured agent to your `devShell`. This example uses `jailed-opencode`.
 
 ```nix
 {
@@ -71,6 +42,7 @@ inputs.jailed-agents.url = "github:andersonjoseph/jailed-agents";
     in {
       devShells.${system}.default = pkgs.mkShell {
         packages = [
+          # Add the jailed agent to your shell
           (jailed-agents.lib.${system}.makeJailedOpencode {})
         ];
       };
@@ -78,88 +50,104 @@ inputs.jailed-agents.url = "github:andersonjoseph/jailed-agents";
 }
 ```
 
-Run `nix develop` and you'll have the `jailed-opencode` command available. The same pattern works for all pre-configured agents.
+Run `nix develop`, and the `jailed-opencode` command will be available in your shell.
 
-## Available Pre-Configured Agents
+> **Note on Security:** The `jailed-` prefix (e.g., `jailed-crush`) makes it clear that you are running a sandboxed version of the agent. If the agent attempts to access a file outside of its approved directories, you will see a "Permission denied" error. This is the sandbox correctly enforcing its security boundaries, not a bug.
 
-| Agent | Maker Function | Default Command |
-|-------|----------------|-----------------|
-| `crush` | `makeJailedCrush` | `jailed-crush` |
+## Available Agents
+
+`jailed-agents` provides pre-configured builders for the following agents:
+
+| Agent      | Builder Function     | Default Command   |
+| ---------- | -------------------- | ----------------- |
+| `crush`    | `makeJailedCrush`    | `jailed-crush`    |
 | `opencode` | `makeJailedOpencode` | `jailed-opencode` |
 
-Each agent comes with pre-configured config paths and sensible defaults. See the API Reference for customization options.
+These builders come with sensible defaults and include the necessary config paths for the agent to function correctly out of the box.
 
-## Usage Examples
+## Customization
 
-### Basic Usage
+You can customize agents by overriding the default options.
 
-```nix
-(jailed-agents.lib.${system}.makeJailedOpencode {})
-```
+### Use a Custom Package or Name
 
-All pre-configured agents follow this pattern - just replace `makeJailedOpencode` with the agent builder you want (e.g., `makeJailedCrush`).
-
-### Customizing Pre-Configured Agents
-
-By default, pre-configured agents use packages from [`llm-agents.nix`](https://github.com/numtide/llm-agents.nix). You can override any option:
+Override the agent's package or change the command name.
 
 ```nix
-# Use a custom package
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  pkg = pkgs.my-custom-opencode;
-})
-
-# Combine custom package with custom name and extra packages
 (jailed-agents.lib.${system}.makeJailedOpencode {
   name = "secure-opencode";
   pkg = pkgs.opencode_2_0;
-  extraPkgs = [ pkgs.nodejs pkgs.python3 ];
-})
-
-# Mount additional directories
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  extraReadwriteDirs = ["~/projects"];
-  extraReadonlyDirs = ["~/readonly-cache"];
 })
 ```
 
-> **Note:** Default command names use the `jailed-` prefix (e.g., `jailed-crush`, `jailed-opencode`) to make it explicit that these are sandboxed versions with restricted permissions. This helps prevent confusion:
->
-> - **Expected behavior:** Permission denied errors are normal when the agent tries to access files outside its sandbox
-> - **Not a bug:** If you encounter permission issues, the agent is working correctly. It's the sandbox enforcing security
-> - **Customize access:** You can customize jail options (e.g., mount additional directories) or open a PR to add missing state/config paths if they should be accessible by default
+### Add Extra Packages
+
+Include additional packages in the sandbox environment.
+
+```nix
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  extraPkgs = [ pkgs.nodejs pkgs.python3 ];
+})
+```
 
 ### Mount Additional Directories
 
-You can mount additional directories with read-write or read-only access:
+Provide read-write or read-only access to directories.
 
 ```nix
-# Mount directories with read-write access
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  extraReadwriteDirs = [
-    "~/projects"
-    "~/custom-config"
-  ];
-})
-
-# Mount directories with read-only access
-(jailed-agents.lib.${system}.makeJailedCrush {
-  extraReadonlyDirs = [
-    "~/readonly-cache"
-    "/usr/share/something"
-  ];
-})
-
-# Combine both
 (jailed-agents.lib.${system}.makeJailedOpencode {
   extraReadwriteDirs = ["~/projects"];
   extraReadonlyDirs = ["~/readonly-cache"];
 })
 ```
 
-For advanced custom jail options (beyond directory mounting), see the [jail.nix combinators documentation](https://alexdav.id/projects/jail-nix/combinators/).
+### Create a Custom Agent
 
-### Go Development Example
+If an agent is not pre-configured, you can easily create a jail for it using `makeJailedAgent`.
+
+```nix
+(jailed-agents.lib.${system}.makeJailedAgent {
+  name = "my-custom-agent";
+  pkg = pkgs.my-agent-package;
+  configPaths = [
+    "~/.config/my-agent"
+    "~/.local/share/my-agent"
+  ];
+  extraPkgs = [
+    pkgs.pandoc
+    pkgs.ffmpeg
+  ];
+})
+```
+
+> **Tip:** Prefer using the pre-configured builders (`makeJailedCrush`, `makeJailedOpencode`) when possible, as they provide simpler APIs and sensible defaults. Use `makeJailedAgent` only for unsupported agents or for full control.
+
+### Advanced Customization
+
+For ultimate control, you can use the `internals` API to access the underlying `jail.nix` combinators. This allows you to modify base jail options, such as disabling network access.
+
+```nix
+let
+  jail = jailed-agents.lib.${system}.internals.jail;
+  combinators = jail.combinators;
+in
+{
+  # Example: Disable network access for opencode
+  packages.x86_64-linux.opencode-no-net = jailed-agents.lib.${system}.makeJailedOpencode {
+    baseJailOptions = [
+      combinators.time-zone
+      combinators.no-new-session
+      combinators.mount-cwd
+    ];
+  };
+}
+```
+
+For a complete reference on available combinators, see the [jail.nix combinators documentation](https://alexdav.id/projects/jail-nix/combinators/).
+
+## Go Development Example
+
+Here is an example of how to set up a Go development environment with a jailed `crush` agent that has access to the Go toolchain.
 
 ```nix
 {
@@ -186,6 +174,7 @@ For advanced custom jail options (beyond directory mounting), see the [jail.nix 
           golangci-lint
           go-task
 
+          # Provide the Go toolchain to the jailed agent
           (jailed-agents.lib.${system}.makeJailedCrush {
             extraPkgs = [
               go
@@ -202,37 +191,14 @@ For advanced custom jail options (beyond directory mounting), see the [jail.nix 
 }
 ```
 
-### Custom Agent
-
-Use `makeJailedAgent` for agents not pre-configured by `jailed-agents`:
-
-```nix
-(jailed-agents.lib.${system}.makeJailedAgent {
-  name = "my-custom-agent";
-  pkg = pkgs.my-agent-package;
-  configPaths = [
-    "~/.config/my-agent"
-    "~/.local/share/my-agent"
-  ];
-  extraPkgs = [
-    pkgs.pandoc
-    pkgs.ffmpeg
-  ];
-})
-```
-
-> **Tip:** For supported agents (`crush`, `opencode`), prefer `makeJailedCrush`/`makeJailedOpencode` over `makeJailedAgent` for pre-configured paths and simpler API. Use `makeJailedAgent` only for unsupported agents or when you need full control over the configuration.
-
 ## API Reference
 
-### Pre-Configured Agent Builders
-
-All pre-configured agents follow the same pattern:
+### Pre-configured Builders (`makeJailed<AgentName>`)
 
 ```nix
-makeJailed<agent-name> {
-  name ? "jailed-agentname",
-  pkg ? default-pkg,
+makeJailed<AgentName> {
+  name ? "jailed-<agent-name>",
+  pkg ? /* default package from llm-agents.nix */,
   extraPkgs ? [],
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
@@ -241,22 +207,7 @@ makeJailed<agent-name> {
 }
 ```
 
-**Parameters:**
-- `name` - The command name (default: `"jailed-<agentname>"`)
-- `pkg` - The agent package (default: from llm-agents.nix)
-- `extraPkgs` - Additional packages to include (optional)
-- `extraReadwriteDirs` - Additional directories to mount read/write (optional)
-- `extraReadonlyDirs` - Additional directories to mount read-only (optional)
-- `baseJailOptions` - Override base jail options (optional)
-- `basePackages` - Override base package set (optional)
-
-**Available Builders:**
-- `makeJailedCrush` - Pre-configured with crush's config paths
-- `makeJailedOpencode` - Pre-configured with opencode's config paths
-
-Each builder includes agent-specific config paths (see "What's Included by Default" section above) for a seamless experience out of the box.
-
-### makeJailedAgent
+### Custom Agent Builder (`makeJailedAgent`)
 
 ```nix
 makeJailedAgent {
@@ -271,51 +222,44 @@ makeJailedAgent {
 }
 ```
 
-Creates a generic jailed environment for any agent.
+- **`name`**: (Required) The command name for the jailed agent.
+- **`pkg`**: (Required) The agent package to sandbox.
+- **`configPaths`**: (Required for `makeJailedAgent`) A list of essential configuration paths the agent needs read-write access to (e.g., `["~/.config/my-agent"]`).
+- **`extraPkgs`**: A list of additional packages to include in the sandbox.
+- **`extraReadwriteDirs`**: A list of directories to mount with read-write access.
+- **`extraReadonlyDirs`**: A list of directories to mount with read-only access.
+- **`baseJailOptions`**: Overrides the default set of jail options.
+- **`basePackages`**: Overrides the default set of base packages.
 
-**Parameters:**
-- `name` - The name of the jail
-- `pkg` - The agent package to run
-- `configPaths` - List of paths to mount read/write (e.g., `["~/.config/my-app"]`)
-- `extraPkgs` - Additional packages to include (optional)
-- `extraReadwriteDirs` - Additional directories to mount read/write (optional)
-- `extraReadonlyDirs` - Additional directories to mount read-only (optional)
-- `baseJailOptions` - Override base jail options (optional)
-- `basePackages` - Override base package set (optional)
+### What's Included by Default
 
-### Exposed Utilities
-
-```nix
-{
-  inherit commonJailOptions;   # Base jail configuration
-  inherit commonPkgs;          # Base package set
-  inherit makeJailedAgent;     # Generic builder for any agent
-  inherit makeJailed<agent-name>;    # Pre-configured <agent-name> agent builder
-}
-```
+- **Common Packages**: All agents include `bash`, `curl`, `wget`, `jq`, `git`, `ripgrep`, `gnugrep`, `gawk`, `ps`, `findutils`, `gzip`, `unzip`, `gnutar`, and `diffutils`.
+- **Common Jail Options**: All jails include network access, system timezone propagation, prevention of new session creation, and mounting of the current working directory.
 
 ## Why Not Docker?
 
-Docker feels heavy for sandboxing AI agents and requires duplicating your Nix environment in a Dockerfile. `jailed-agents` leverages:
-- **`bubblewrap`** - Lightweight sandboxing (same tech as Flatpak)
-- **`jail.nix`** - Declarative, Nix-native library for building bubblewrap sandboxes
-- **Nix Flakes** - Seamless integration with your existing development setup
+Docker is a heavy solution for this use case and would require you to duplicate your Nix environment inside a Dockerfile. `jailed-agents` is built on technologies that integrate seamlessly with a Nix-based workflow:
 
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details
+- **`bubblewrap`**: The same lightweight sandboxing technology used by Flatpak.
+- **`jail.nix`**: A declarative, Nix-native library for building `bubblewrap` sandboxes.
+- **Nix Flakes**: Integrates directly into your existing development environment without extra overhead.
 
 ## Contributing
 
-Contributions are welcome! We accept PRs for:
-- New agent configurations
-- Composable building blocks
-- Bug fixes and improvements
+Contributions are welcome! Please feel free to open a pull request for:
+
+- New pre-configured agent setups
+- Additional composable building blocks
+- Bug fixes and general improvements
 
 ## Credits
 
-Built with:
+This project is built on the great work of others:
+
 - [jail.nix](https://alexdav.id/projects/jail-nix/) by Alex David
 - [llm-agents.nix](https://github.com/numtide/llm-agents.nix) by Numtide
 - [bubblewrap](https://github.com/containers/bubblewrap)
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
