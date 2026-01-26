@@ -77,6 +77,8 @@
     devShells.default = pkgs.mkShell {
       packages = [
 	pkgs.nixd
+	pkgs.nixfmt
+	pkgs.statix
 
 	(makeJailedCrush {})
 	(makeJailedOpencode {})
