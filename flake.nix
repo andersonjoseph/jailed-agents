@@ -138,7 +138,6 @@
             inherit jail;
           };
         };
-        formatter = pkgs.nixfmt-tree;
 
         devShells.default = pkgs.mkShell {
           packages = [
