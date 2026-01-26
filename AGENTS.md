@@ -6,7 +6,7 @@ Guidelines for agentic coding assistants working on `jailed-agents`.
 
 ### Formatting
 ```bash
-nix fmt
+nixfmt
 ```
 Format all Nix files using `nixfmt`.
 
@@ -20,13 +20,7 @@ Check for Nix code style issues.
 ```bash
 nix build .#<package>
 ```
-Build any package from flake outputs.
-
-### Development Shell
-```bash
-nix develop
-```
-Enter dev shell with nixd, nixfmt, statix, and jailed agents.
+Build any package from flake outputs. Use `llm-agents.packages.${system}.<agent>` pattern for package access.
 
 ### Testing
 No external tests. Create a test flake that imports this repository, build the agent config, and verify sandbox constraints:
@@ -39,6 +33,12 @@ No external tests. Create a test flake that imports this repository, build the a
   };
 }
 ```
+
+### Development Shell
+```bash
+nix develop
+```
+Enter dev shell with nixd, nixfmt, statix, and jailed agents.
 
 ## Code Style Guidelines
 
@@ -68,10 +68,25 @@ makeJailedAgent = {
 - Use `with pkgs;` for package imports when building package lists
 - Use `with jail.combinators;` when using jail combinators
 - Avoid mixing `with` statements in the same scope
+- Use `inherit` for passing multiple attributes vertically:
+
+```nix
+makeJailedAgent {
+  inherit
+    name
+    pkg
+    extraPkgs
+    baseJailOptions
+    ;
+  configPaths = ["~/.config/app"];
+};
+```
 
 ### Lists and Attributes
 - Place list items on separate lines with proper indentation and trailing commas
 - Example: `commonPkgs = with pkgs; [ bashInteractive curl wget jq git ];`
+- Add empty lines between logical sections in let-bindings (e.g., between `commonPkgs` and `commonJailOptions`)
+- Use trailing semicolon for multi-line `inherit` blocks
 
 ### Naming Conventions
 - Functions: `camelCase` (e.g., `makeJailedCrush`, `makeJailedOpencode`)
@@ -84,16 +99,23 @@ makeJailedAgent = {
 - Export all public functions via `lib` attribute
 - Keep common utilities at top-level (e.g., `commonJailOptions`, `commonPkgs`)
 - Separate builder functions from utility exports: `lib = { inherit commonJailOptions commonPkgs jail makeJailedAgent makeJailedCrush makeJailedOpencode; };`
+- Use `internals` namespace for non-public exports (e.g., `jail` object)
+- Use `eachDefaultSystem` from flake-utils for multi-platform support
 
 ### Error Handling
 - Nix flake outputs will fail automatically at evaluation time if errors exist
 - Use `lib.init pkgs` pattern for jail initialization
 - Ensure all required parameters are validated in function signatures
 
+### Nixpkgs Configuration
+- Set `config.allowUnfree = true` when importing nixpkgs to support all packages
+- Pattern: `pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };`
+
 ### Path Handling
 - Use `noescape` combinator for home directory paths to prevent expansion
 - Pattern: `(readwrite (noescape "~/.config/appname"))`
 - Use `noescape` for any path containing `~` or other shell expansions
+- Separate readwrite and readonly directory mounting with `++` operator in jail combinators
 
 ### Comments
 - No inline comments in current codebase - keep it minimal
