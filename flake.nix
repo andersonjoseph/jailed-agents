@@ -9,80 +9,135 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { nixpkgs, jail-nix, llm-agents, flake-utils, ... }:
-  flake-utils.lib.eachDefaultSystem (system: 
-  let
-    pkgs = import nixpkgs {
-      inherit system;
-      config.allowUnfree = true;
-    };
-    jail = jail-nix.lib.init pkgs;
+  outputs =
+    {
+      nixpkgs,
+      jail-nix,
+      llm-agents,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
+        jail = jail-nix.lib.init pkgs;
 
-    crush-pkg = llm-agents.packages.${system}.crush;
-    opencode-pkg = llm-agents.packages.${system}.opencode;
+        crush-pkg = llm-agents.packages.${system}.crush;
+        opencode-pkg = llm-agents.packages.${system}.opencode;
 
-    commonPkgs = with pkgs; [
-      bashInteractive
-      curl
-      wget
-      jq
-      git
-      which
-      ripgrep
-      gnugrep
-      gawkInteractive
-      ps
-      findutils
-      gzip
-      unzip
-      gnutar
-      diffutils
-    ];
+        commonPkgs = with pkgs; [
+          bashInteractive
+          curl
+          wget
+          jq
+          git
+          which
+          ripgrep
+          gnugrep
+          gawkInteractive
+          ps
+          findutils
+          gzip
+          unzip
+          gnutar
+          diffutils
+        ];
 
-    commonJailOptions = with jail.combinators; [
-	network
-	time-zone
-	no-new-session
-	mount-cwd
-    ];
+        commonJailOptions = with jail.combinators; [
+          network
+          time-zone
+          no-new-session
+          mount-cwd
+        ];
 
-    makeJailedCrush = { extraPkgs ? [] }: jail "jailed-crush" crush-pkg (with jail.combinators; (
-	commonJailOptions ++ [
-	(readwrite (noescape "~/.config/crush"))
-	(readwrite (noescape "~/.local/share/crush"))
+        makeJailedAgent =
+          {
+            name,
+            pkg,
+            configPaths,
+            extraPkgs ? [ ],
+            baseJailOptions ? commonJailOptions,
+            basePackages ? commonPkgs,
+          }:
+          jail name pkg (
+            with jail.combinators;
+            (
+              baseJailOptions
+              ++ (map (p: readwrite (noescape p)) configPaths)
+              ++ [ (add-pkg-deps basePackages) ]
+              ++ [ (add-pkg-deps extraPkgs) ]
+            )
+          );
 
-	(add-pkg-deps commonPkgs)
+        makeJailedCrush =
+          {
+            extraPkgs ? [ ],
+            baseJailOptions ? commonJailOptions,
+            basePackages ? commonPkgs,
+          }:
+          jail "jailed-crush" crush-pkg (
+            with jail.combinators;
+            (
+              baseJailOptions
+              ++ [
+                (readwrite (noescape "~/.config/crush"))
+                (readwrite (noescape "~/.local/share/crush"))
 
-	(add-pkg-deps extraPkgs)
-    ]));
+                (add-pkg-deps basePackages)
 
-    makeJailedOpencode = { extraPkgs ? [] }: jail "jailed-opencode" opencode-pkg (with jail.combinators; (
-	commonJailOptions ++ [
-	(readwrite (noescape "~/.config/opencode"))
-	(readwrite (noescape "~/.local/share/opencode"))
-	(readwrite (noescape "~/.local/state/opencode"))
+                (add-pkg-deps extraPkgs)
+              ]
+            )
+          );
 
-	(add-pkg-deps commonPkgs)
+        makeJailedOpencode =
+          {
+            extraPkgs ? [ ],
+            baseJailOptions ? commonJailOptions,
+            basePackages ? commonPkgs,
+          }:
+          jail "jailed-opencode" opencode-pkg (
+            with jail.combinators;
+            (
+              baseJailOptions
+              ++ [
+                (readwrite (noescape "~/.config/opencode"))
+                (readwrite (noescape "~/.local/share/opencode"))
+                (readwrite (noescape "~/.local/state/opencode"))
 
-	(add-pkg-deps extraPkgs)
-    ]));
+                (add-pkg-deps basePackages)
 
-  in 
-  {
-    lib = {
-      inherit makeJailedCrush;
-      inherit makeJailedOpencode;
-    };
+                (add-pkg-deps extraPkgs)
+              ]
+            )
+          );
 
-    devShells.default = pkgs.mkShell {
-      packages = [
-	pkgs.nixd
-	pkgs.nixfmt
-	pkgs.statix
+      in
+      {
+        lib = {
+          inherit commonJailOptions;
+          inherit commonPkgs;
+          inherit jail;
+          inherit makeJailedAgent;
+          inherit makeJailedCrush;
+          inherit makeJailedOpencode;
+        };
+        formatter = flake-utils.lib.eachDefaultSystem (system: pkgs.nixfmt-tree);
 
-	(makeJailedCrush {})
-	(makeJailedOpencode {})
-      ];
-    };
-  });
+        devShells.default = pkgs.mkShell {
+          packages = [
+            pkgs.nixd
+            pkgs.nixfmt
+            pkgs.statix
+
+            (makeJailedCrush { })
+            (makeJailedOpencode { })
+          ];
+        };
+      }
+    );
 }
