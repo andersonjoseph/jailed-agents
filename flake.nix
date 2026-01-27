@@ -125,6 +125,31 @@
             ];
           };
 
+        makeJailedGeminiCli =
+          {
+            name ? "jailed-gemini-cli",
+            pkg ? llm-agents.packages.${system}.gemini-cli,
+            extraPkgs ? [ ],
+            extraReadwriteDirs ? [ ],
+            extraReadonlyDirs ? [ ],
+            baseJailOptions ? commonJailOptions,
+            basePackages ? commonPkgs,
+          }:
+          makeJailedAgent {
+            inherit
+              name
+              pkg
+              extraPkgs
+              extraReadwriteDirs
+              extraReadonlyDirs
+              baseJailOptions
+              basePackages
+              ;
+            configPaths = [
+              "~/.gemini"
+            ];
+          };
+
       in
       {
         lib = {
@@ -133,6 +158,7 @@
           inherit makeJailedAgent;
           inherit makeJailedCrush;
           inherit makeJailedOpencode;
+          inherit makeJailedGeminiCli;
 
           internals = {
             inherit jail;
@@ -146,6 +172,7 @@
             pkgs.statix
 
             (makeJailedCrush { })
+            (makeJailedGeminiCli { })
             (makeJailedOpencode {
               extraPkgs = [
                 pkgs.nixd
