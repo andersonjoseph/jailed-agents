@@ -1,0 +1,93 @@
+name: Update llm-agents
+
+# TRIGGER: Run daily at 6:00 AM UTC
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-slim
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Update llm-agents
+        run: nix flake update llm-agents
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          set -eo pipefail
+          if git diff --quiet flake.lock; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to flake.lock - llm-agents is up to date"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "flake.lock has changes - proceeding with PR creation"
+          fi
+
+      - name: Exit if no changes
+        if: steps.check_changes.outputs.changed == 'false'
+        run: |
+          set -eo pipefail
+          echo "No updates needed. Exiting early."
+          exit 0
+
+      - name: Configure git
+        run: |
+          set -eo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Extract llm-agents revision
+        id: extract_rev
+        run: |
+          set -eo pipefail
+          REV=$(jq -r '.nodes["llm-agents"].locked.rev' flake.lock)
+          echo "rev=$REV" >> $GITHUB_OUTPUT
+          echo "llm-agents revision: $REV"
+
+      - name: Commit changes
+        run: |
+          set -eo pipefail
+          git add flake.lock
+          git commit -m "update llm-agents to ${{ steps.extract_rev.outputs.rev }}"
+
+      - name: Create branch and push
+        run: |
+          set -eo pipefail
+          BRANCH="update/llm-agents-${{ steps.extract_rev.outputs.rev }}"
+          git checkout -b "$BRANCH"
+          git push -u origin "$BRANCH"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REV: ${{ steps.extract_rev.outputs.rev }}
+        run: |
+          set -eo pipefail
+          BRANCH="update/llm-agents-$REV"
+          
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number')
+          
+          if [ -n "$EXISTING_PR" ]; then
+            echo "A pull request for branch $BRANCH already exists: #$EXISTING_PR"
+          else
+            BODY=$(printf '%s\n' "Automated update of llm-agents dependency." "" "New revision: $REV" "" "This PR was created by the daily update workflow running at 6:00 AM UTC.")
+            gh pr create \
+              --title "update llm-agents to $REV" \
+              --body "$BODY"
+          fi
