@@ -77,11 +77,11 @@ Run `nix develop`, and the `jailed-opencode` command will be available in your s
 
 `jailed-agents` provides pre-configured builders for the following agents:
 
-| Agent      | Builder Function     | Package           | Default Command   |
-| ---------- | -------------------- | ----------------- | ----------------- |
-| `crush`    | `makeJailedCrush`    | `jailed-crush`    | `jailed-crush`    |
-| `gemini-cli`| `makeJailedGeminiCli`| `jailed-gemini-cli`| `jailed-gemini-cli`|
-| `opencode` | `makeJailedOpencode` | `jailed-opencode` | `jailed-opencode` |
+| Agent      | Builder Function     | Default Command   |
+| ---------- | -------------------- | ----------------- |
+| `crush`    | `makeJailedCrush`    | `jailed-crush`    |
+| `gemini-cli`| `makeJailedGeminiCli`| `jailed-gemini-cli`|
+| `opencode` | `makeJailedOpencode` | `jailed-opencode` |
 
 These builders come with sensible defaults and include the necessary config paths for the agent to function correctly out of the box.
 
@@ -212,26 +212,6 @@ Here is an example of how to set up a Go development environment with a jailed `
 ```
 
 ## API Reference
-
-### Packages Output
-
-The `packages` output provides pre-configured agents ready to run:
-
-```nix
-packages = {
-  jailed-crush = makeJailedCrush { };
-  jailed-gemini-cli = makeJailedGeminiCli { };
-  jailed-opencode = makeJailedOpencode {
-    extraPkgs = [ pkgs.nixd pkgs.nixfmt pkgs.statix ];
-  };
-}
-```
-
-Access packages from other flakes:
-
-```nix
-jailed-agents.packages.${system}.jailed-opencode
-```
 
 ### Pre-configured Builders (`makeJailed<AgentName>`)
 
