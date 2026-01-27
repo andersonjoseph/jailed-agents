@@ -165,14 +165,17 @@
           };
         };
 
+        packages = {
+          jailed-crush = makeJailedCrush { };
+          jailed-gemini-cli = makeJailedGeminiCli { };
+          jailed-opencode = makeJailedOpencode { };
+        };
+
         devShells.default = pkgs.mkShell {
           packages = [
             pkgs.nixd
             pkgs.nixfmt
             pkgs.statix
-
-            (makeJailedCrush { })
-            (makeJailedGeminiCli { })
             (makeJailedOpencode {
               extraPkgs = [
                 pkgs.nixd
