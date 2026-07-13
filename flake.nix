@@ -121,10 +121,15 @@
             )
           );
 
-        makeJailedCrush =
+        makePreconfiguredAgent =
           {
-            name ? "jailed-crush",
-            pkg ? llm-agents.packages.${system}.crush,
+            defaultName,
+            defaultPkg,
+            configPaths,
+          }:
+          {
+            name ? defaultName,
+            pkg ? defaultPkg,
             extraPkgs ? [ ],
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
@@ -141,144 +146,54 @@
               extraPkgs
               extraReadwriteDirs
               extraReadonlyDirs
+              env
               enableNix
               nixConfigDir
               baseJailOptions
               basePackages
-              env
+              configPaths
               ;
-            configPaths = [
-              "~/.config/crush"
-              "~/.local/share/crush"
-            ];
           };
 
-        makeJailedOpencode =
-          {
-            name ? "jailed-opencode",
-            pkg ? llm-agents.packages.${system}.opencode,
-            extraPkgs ? [ ],
-            extraReadwriteDirs ? [ ],
-            extraReadonlyDirs ? [ ],
-            env ? { },
-            enableNix ? false,
-            nixConfigDir ? null,
-            baseJailOptions ? commonJailOptions,
-            basePackages ? commonPkgs,
-          }:
-          makeJailedAgent {
-            inherit
-              name
-              pkg
-              extraPkgs
-              extraReadwriteDirs
-              extraReadonlyDirs
-              enableNix
-              nixConfigDir
-              baseJailOptions
-              basePackages
-              env
-              ;
-            configPaths = [
-              "~/.config/opencode"
-              "~/.local/share/opencode"
-              "~/.local/state/opencode"
-            ];
-          };
+        makeJailedCrush = makePreconfiguredAgent {
+          defaultName = "jailed-crush";
+          defaultPkg = llm-agents.packages.${system}.crush;
+          configPaths = [
+            "~/.config/crush"
+            "~/.local/share/crush"
+          ];
+        };
 
-        makeJailedHermesAgent =
-          {
-            name ? "jailed-hermes-agent",
-            pkg ? llm-agents.packages.${system}.hermes-agent,
-            extraPkgs ? [ ],
-            extraReadwriteDirs ? [ ],
-            extraReadonlyDirs ? [ ],
-            env ? { },
-            enableNix ? false,
-            nixConfigDir ? null,
-            baseJailOptions ? commonJailOptions,
-            basePackages ? commonPkgs,
-          }:
-          makeJailedAgent {
-            inherit
-              name
-              pkg
-              extraPkgs
-              extraReadwriteDirs
-              extraReadonlyDirs
-              enableNix
-              nixConfigDir
-              baseJailOptions
-              basePackages
-              env
-              ;
-            configPaths = [
-              "~/.hermes"
-            ];
-          };
+        makeJailedOpencode = makePreconfiguredAgent {
+          defaultName = "jailed-opencode";
+          defaultPkg = llm-agents.packages.${system}.opencode;
+          configPaths = [
+            "~/.config/opencode"
+            "~/.local/share/opencode"
+            "~/.local/state/opencode"
+          ];
+        };
 
-        makeJailedPi =
-          {
-            name ? "jailed-pi",
-            pkg ? llm-agents.packages.${system}.pi,
-            extraPkgs ? [ ],
-            extraReadwriteDirs ? [ ],
-            extraReadonlyDirs ? [ ],
-            env ? { },
-            enableNix ? false,
-            nixConfigDir ? null,
-            baseJailOptions ? commonJailOptions,
-            basePackages ? commonPkgs,
-          }:
-          makeJailedAgent {
-            inherit
-              name
-              pkg
-              extraPkgs
-              extraReadwriteDirs
-              extraReadonlyDirs
-              enableNix
-              nixConfigDir
-              baseJailOptions
-              basePackages
-              env
-              ;
-            configPaths = [
-              "~/.pi"
-            ];
-          };
+        makeJailedHermesAgent = makePreconfiguredAgent {
+          defaultName = "jailed-hermes-agent";
+          defaultPkg = llm-agents.packages.${system}.hermes-agent;
+          configPaths = [ "~/.hermes" ];
+        };
 
-        makeJailedClaudeCode =
-          {
-            name ? "jailed-claude-code",
-            pkg ? llm-agents.packages.${system}.claude-code,
-            extraPkgs ? [ ],
-            extraReadwriteDirs ? [ ],
-            extraReadonlyDirs ? [ ],
-            env ? { },
-            enableNix ? false,
-            nixConfigDir ? null,
-            baseJailOptions ? commonJailOptions,
-            basePackages ? commonPkgs,
-          }:
-          makeJailedAgent {
-            inherit
-              name
-              pkg
-              extraPkgs
-              extraReadwriteDirs
-              extraReadonlyDirs
-              enableNix
-              nixConfigDir
-              baseJailOptions
-              basePackages
-              env
-              ;
-            configPaths = [
-              "~/.claude"
-              "~/.claude.json"
-            ];
-          };
+        makeJailedPi = makePreconfiguredAgent {
+          defaultName = "jailed-pi";
+          defaultPkg = llm-agents.packages.${system}.pi;
+          configPaths = [ "~/.pi" ];
+        };
+
+        makeJailedClaudeCode = makePreconfiguredAgent {
+          defaultName = "jailed-claude-code";
+          defaultPkg = llm-agents.packages.${system}.claude-code;
+          configPaths = [
+            "~/.claude"
+            "~/.claude.json"
+          ];
+        };
 
       in
       {
