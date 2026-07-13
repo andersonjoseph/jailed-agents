@@ -27,6 +27,30 @@
           pkg = pkgs.bashInteractive;
           configPaths = [ ];
         };
+
+        nix-enabled-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "nix-enabled-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          enableNix = true;
+        };
+
+        nixconfig-readonly-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "nixconfig-readonly-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          nixConfigDir = "/tmp/jailed-agents-nixconfig-test";
+        };
+
+        nixconfig-writable-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "nixconfig-writable-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          nixConfigDir = {
+            path = "/tmp/jailed-agents-nixconfig-test";
+            writable = true;
+          };
+        };
       };
     };
 }

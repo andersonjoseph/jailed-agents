@@ -238,6 +238,8 @@ makeJailed<AgentName> {
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
+  enableNix ? false,
+  nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
 }
@@ -254,6 +256,8 @@ makeJailedAgent {
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
+  enableNix ? false,
+  nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
 }
@@ -266,6 +270,11 @@ makeJailedAgent {
 - **`extraReadwriteDirs`**: A list of directories to mount with read-write access.
 - **`extraReadonlyDirs`**: A list of directories to mount with read-only access.
 - **`env`**: An attribute set of environment variables to set inside the jail (e.g. `{ EDITOR = "nvim"; }`).
+- **`enableNix`**: When `true`, grants the agent access to the host Nix daemon: mounts `/nix` and `/etc/nix/nix.conf` read-only, the daemon socket `/nix/var/nix/daemon-socket` read-write, and adds the `nix` package.
+
+  > **Warning:** `enableNix = true` lets the agent build and execute arbitrary packages from nixpkgs via the Nix daemon, bypassing the sandbox's curated toolset. Only enable it for agents you trust to run arbitrary code.
+
+- **`nixConfigDir`**: Mounts a NixOS/system config directory into the jail so the agent can read (or edit) the declaration. Pass a path string to mount it read-only (e.g. `"/etc/nixos"`), or `{ path = "/etc/nixos"; writable = true; }` to mount it read-write. Defaults to `null` (nothing mounted). Independent of `enableNix`.
 - **`baseJailOptions`**: Overrides the default set of jail options.
 - **`basePackages`**: Overrides the default set of base packages.
 
