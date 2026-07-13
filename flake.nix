@@ -50,6 +50,15 @@
           no-new-session
         ];
 
+        nixDaemonAccess = {
+          readwriteDirs = [ "/nix/var/nix/daemon-socket" ];
+          readonlyDirs = [
+            "/nix"
+            "/etc/nix/nix.conf"
+          ];
+          pkgs = [ pkgs.nix ];
+        };
+
         makeJailedAgent =
           {
             name,
@@ -59,18 +68,55 @@
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
             env ? { },
+            enableNix ? false,
+            nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
+          let
+            # Resolved form of `nixConfigDir`: null, or { path, writable }.
+            resolvedNixConfigDir =
+              if nixConfigDir == null then
+                null
+              else if builtins.isString nixConfigDir then
+                {
+                  path = nixConfigDir;
+                  writable = false;
+                }
+              else if builtins.isAttrs nixConfigDir then
+                if nixConfigDir ? path then
+                  {
+                    inherit (nixConfigDir) path;
+                    writable = nixConfigDir.writable or false;
+                  }
+                else
+                  throw "nixConfigDir attrset requires a 'path' attribute"
+              else
+                throw "nixConfigDir must be null, a path string, or an attrset { path, writable }";
+
+            readonlyDirs =
+              extraReadonlyDirs
+              ++ pkgs.lib.optionals enableNix nixDaemonAccess.readonlyDirs
+              ++ pkgs.lib.optional (
+                resolvedNixConfigDir != null && !resolvedNixConfigDir.writable
+              ) resolvedNixConfigDir.path;
+            readwriteDirs =
+              extraReadwriteDirs
+              ++ pkgs.lib.optionals enableNix nixDaemonAccess.readwriteDirs
+              ++ pkgs.lib.optional (
+                resolvedNixConfigDir != null && resolvedNixConfigDir.writable
+              ) resolvedNixConfigDir.path;
+            extraPackages = extraPkgs ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs;
+          in
           jail name pkg (
             with jail.combinators;
             (
               baseJailOptions
-              ++ (map (p: readonly (noescape p)) extraReadonlyDirs)
+              ++ (map (p: readonly (noescape p)) readonlyDirs)
               ++ [ mount-cwd ]
-              ++ (map (p: readwrite (noescape p)) (configPaths ++ extraReadwriteDirs))
+              ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
               ++ [ (add-pkg-deps basePackages) ]
-              ++ [ (add-pkg-deps extraPkgs) ]
+              ++ [ (add-pkg-deps extraPackages) ]
               ++ (pkgs.lib.mapAttrsToList set-env env)
             )
           );
@@ -83,6 +129,8 @@
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
             env ? { },
+            enableNix ? false,
+            nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
@@ -93,6 +141,8 @@
               extraPkgs
               extraReadwriteDirs
               extraReadonlyDirs
+              enableNix
+              nixConfigDir
               baseJailOptions
               basePackages
               env
@@ -111,6 +161,8 @@
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
             env ? { },
+            enableNix ? false,
+            nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
@@ -121,6 +173,8 @@
               extraPkgs
               extraReadwriteDirs
               extraReadonlyDirs
+              enableNix
+              nixConfigDir
               baseJailOptions
               basePackages
               env
@@ -140,6 +194,8 @@
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
             env ? { },
+            enableNix ? false,
+            nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
@@ -150,6 +206,8 @@
               extraPkgs
               extraReadwriteDirs
               extraReadonlyDirs
+              enableNix
+              nixConfigDir
               baseJailOptions
               basePackages
               env
@@ -167,6 +225,8 @@
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
             env ? { },
+            enableNix ? false,
+            nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
@@ -177,6 +237,8 @@
               extraPkgs
               extraReadwriteDirs
               extraReadonlyDirs
+              enableNix
+              nixConfigDir
               baseJailOptions
               basePackages
               env
@@ -194,6 +256,8 @@
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
             env ? { },
+            enableNix ? false,
+            nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
@@ -204,6 +268,8 @@
               extraPkgs
               extraReadwriteDirs
               extraReadonlyDirs
+              enableNix
+              nixConfigDir
               baseJailOptions
               basePackages
               env
