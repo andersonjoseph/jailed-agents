@@ -80,6 +80,7 @@ Run `nix develop`, and the `jailed-opencode` command will be available in your s
 | Agent        | Builder Function       | Default Command     |
 | ------------ | ---------------------- | ------------------- |
 | `claude-code`| `makeJailedClaudeCode` | `jailed-claude-code`|
+| `codex`      | `makeJailedCodex`      | `jailed-codex`      |
 | `crush`      | `makeJailedCrush`      | `jailed-crush`      |
 | `hermes-agent` | `makeJailedHermesAgent` | `jailed-hermes-agent` |
 | `opencode`   | `makeJailedOpencode`   | `jailed-opencode`   |

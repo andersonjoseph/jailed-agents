@@ -9,6 +9,7 @@ packages=(
   jailed-opencode
   jailed-hermes-agent
   jailed-claude-code
+  jailed-codex
   jailed-pi
 )
 

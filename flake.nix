@@ -195,6 +195,12 @@
           ];
         };
 
+        makeJailedCodex = makePreconfiguredAgent {
+          defaultName = "jailed-codex";
+          defaultPkg = llm-agents.packages.${system}.codex;
+          configPaths = [ "~/.codex" ];
+        };
+
       in
       {
         lib = {
@@ -202,6 +208,7 @@
 
           inherit makeJailedAgent;
           inherit makeJailedClaudeCode;
+          inherit makeJailedCodex;
           inherit makeJailedCrush;
           inherit makeJailedHermesAgent;
           inherit makeJailedOpencode;
@@ -214,6 +221,7 @@
 
         packages = {
           jailed-claude-code = makeJailedClaudeCode { };
+          jailed-codex = makeJailedCodex { };
           jailed-crush = makeJailedCrush { };
           jailed-hermes-agent = makeJailedHermesAgent { };
           jailed-opencode = makeJailedOpencode { };
