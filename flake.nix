@@ -155,50 +155,8 @@
               ;
           };
 
-        makeJailedCrush = makePreconfiguredAgent {
-          defaultName = "jailed-crush";
-          defaultPkg = llm-agents.packages.${system}.crush;
-          configPaths = [
-            "~/.config/crush"
-            "~/.local/share/crush"
-          ];
-        };
-
-        makeJailedOpencode = makePreconfiguredAgent {
-          defaultName = "jailed-opencode";
-          defaultPkg = llm-agents.packages.${system}.opencode;
-          configPaths = [
-            "~/.config/opencode"
-            "~/.local/share/opencode"
-            "~/.local/state/opencode"
-          ];
-        };
-
-        makeJailedHermesAgent = makePreconfiguredAgent {
-          defaultName = "jailed-hermes-agent";
-          defaultPkg = llm-agents.packages.${system}.hermes-agent;
-          configPaths = [ "~/.hermes" ];
-        };
-
-        makeJailedPi = makePreconfiguredAgent {
-          defaultName = "jailed-pi";
-          defaultPkg = llm-agents.packages.${system}.pi;
-          configPaths = [ "~/.pi" ];
-        };
-
-        makeJailedClaudeCode = makePreconfiguredAgent {
-          defaultName = "jailed-claude-code";
-          defaultPkg = llm-agents.packages.${system}.claude-code;
-          configPaths = [
-            "~/.claude"
-            "~/.claude.json"
-          ];
-        };
-
-        makeJailedCodex = makePreconfiguredAgent {
-          defaultName = "jailed-codex";
-          defaultPkg = llm-agents.packages.${system}.codex;
-          configPaths = [ "~/.codex" ];
+        agents = import ./lib/agents {
+          inherit makePreconfiguredAgent llm-agents system;
         };
 
       in
@@ -207,12 +165,14 @@
           inherit commonJailOptions;
 
           inherit makeJailedAgent;
-          inherit makeJailedClaudeCode;
-          inherit makeJailedCodex;
-          inherit makeJailedCrush;
-          inherit makeJailedHermesAgent;
-          inherit makeJailedOpencode;
-          inherit makeJailedPi;
+          inherit (agents)
+            makeJailedClaudeCode
+            makeJailedCodex
+            makeJailedCrush
+            makeJailedHermesAgent
+            makeJailedOpencode
+            makeJailedPi
+            ;
 
           internals = {
             inherit jail;
@@ -220,12 +180,12 @@
         };
 
         packages = {
-          jailed-claude-code = makeJailedClaudeCode { };
-          jailed-codex = makeJailedCodex { };
-          jailed-crush = makeJailedCrush { };
-          jailed-hermes-agent = makeJailedHermesAgent { };
-          jailed-opencode = makeJailedOpencode { };
-          jailed-pi = makeJailedPi { };
+          jailed-claude-code = agents.makeJailedClaudeCode { };
+          jailed-codex = agents.makeJailedCodex { };
+          jailed-crush = agents.makeJailedCrush { };
+          jailed-hermes-agent = agents.makeJailedHermesAgent { };
+          jailed-opencode = agents.makeJailedOpencode { };
+          jailed-pi = agents.makeJailedPi { };
         };
 
         formatter = pkgs.nixfmt;
@@ -235,7 +195,7 @@
             pkgs.nixd
             pkgs.nixfmt
             pkgs.statix
-            (makeJailedOpencode {
+            (agents.makeJailedOpencode {
               extraPkgs = [
                 pkgs.nixd
                 pkgs.nixfmt
