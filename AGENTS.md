@@ -123,14 +123,23 @@ makeJailedAgent {
 - Documentation lives in README.md and API reference sections
 
 ### Adding New Agents
-To add support for a new agent, create a builder that calls `makeJailedAgent` with agent-specific `configPaths`:
+To add support for a new agent, create a module under `lib/agents/` using `makePreconfiguredAgent`:
 
 ```nix
-makeJailed<AgentName> = { name ? "jailed-agentname", pkg ? llm-agents.packages.${system}.<agent-name>, extraPkgs ? [], extraReadwriteDirs ? [], extraReadonlyDirs ? [], baseJailOptions ? commonJailOptions, basePackages ? commonPkgs, }:
-makeJailedAgent { inherit name pkg extraPkgs extraReadwriteDirs extraReadonlyDirs baseJailOptions basePackages; configPaths = [ "~/.config/<agent>" "~/.local/share/<agent>" ]; };
+# lib/agents/<agent>.nix
+{
+  makePreconfiguredAgent,
+  llm-agents,
+  system,
+}:
+makePreconfiguredAgent {
+  defaultName = "jailed-<agent>";
+  defaultPkg = llm-agents.packages.${system}.<agent>;
+  configPaths = [ "~/.config/<agent>" "~/.local/share/<agent>" ];
+}
 ```
 
-Export via `lib` attribute and update README.md documentation.
+Then register it in `lib/agents/default.nix`, wire it into `flake.nix` (the `lib` `inherit (agents)` block and the `packages` set), and update the agents table in README.md.
 
 ### Commit Message Style
 - Use lowercase, concise messages (e.g., "add name/alias to packages")
@@ -141,11 +150,14 @@ Export via `lib` attribute and update README.md documentation.
 
 ```
 .
-├── flake.nix              # Main library with all builder functions
+├── flake.nix              # Core builders (makeJailedAgent, makePreconfiguredAgent) + outputs wiring
 ├── flake.lock             # Lock file for reproducible builds
+├── lib/
+│   └── agents/            # One module per agent (configPaths, defaultPkg, defaultName)
+├── tests/                 # Test flake + smoke-test script
 ├── README.md              # User documentation
 ├── LICENSE                # MIT License
-└── .crush/               # Crush agent state (gitignored)
+└── .crush/                # Crush agent state (gitignored)
 ```
 
 ## Key Dependencies
