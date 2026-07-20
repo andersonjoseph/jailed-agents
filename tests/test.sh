@@ -9,6 +9,7 @@ packages=(
   jailed-opencode
   jailed-hermes-agent
   jailed-claude-code
+  jailed-codex
   jailed-pi
 )
 
@@ -64,8 +65,8 @@ if ! nix build "./tests#nix-enabled-test"; then
   ((fail++)) || true
 else
   if ./result/bin/nix-enabled-test -c 'nix --version' \
-    && ./result/bin/nix-enabled-test -c 'ls /nix/store' \
-    && ./result/bin/nix-enabled-test -c 'ls /nix/var/nix/daemon-socket'; then
+    && ./result/bin/nix-enabled-test -c 'ls /nix/store >/dev/null' \
+    && ./result/bin/nix-enabled-test -c 'ls /nix/var/nix/daemon-socket >/dev/null'; then
     echo "SUCCESS: nix binary and daemon mounts present in jail"
     ((pass++)) || true
   else
