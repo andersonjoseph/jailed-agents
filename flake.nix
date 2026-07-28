@@ -169,6 +169,7 @@
             makeJailedClaudeCode
             makeJailedCodex
             makeJailedCrush
+            makeJailedGoose
             makeJailedHermesAgent
             makeJailedOpencode
             makeJailedPi
@@ -183,6 +184,7 @@
           jailed-claude-code = agents.makeJailedClaudeCode { };
           jailed-codex = agents.makeJailedCodex { };
           jailed-crush = agents.makeJailedCrush { };
+          jailed-goose = agents.makeJailedGoose { };
           jailed-hermes-agent = agents.makeJailedHermesAgent { };
           jailed-opencode = agents.makeJailedOpencode { };
           jailed-pi = agents.makeJailedPi { };

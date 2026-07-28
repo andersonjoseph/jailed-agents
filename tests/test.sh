@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 # Agents to build and smoke-test
 packages=(
   jailed-crush
+  jailed-goose
   jailed-opencode
   jailed-hermes-agent
   jailed-claude-code
@@ -15,6 +16,14 @@ packages=(
 
 pass=0
 fail=0
+
+# --- Ensure each agent's config/data dirs exist so bwrap can bind-mount them ---
+mkdir -p \
+  ~/.config/crush ~/.local/share/crush \
+  ~/.config/goose ~/.local/share/goose ~/.local/state/goose \
+  ~/.config/opencode ~/.local/share/opencode ~/.local/state/opencode \
+  ~/.hermes ~/.claude ~/.codex ~/.pi
+touch ~/.claude.json
 
 # --- Build and smoke-test each agent ---
 for package in "${packages[@]}"; do

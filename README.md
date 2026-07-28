@@ -82,6 +82,7 @@ Run `nix develop`, and the `jailed-opencode` command will be available in your s
 | `claude-code`| `makeJailedClaudeCode` | `jailed-claude-code`|
 | `codex`      | `makeJailedCodex`      | `jailed-codex`      |
 | `crush`      | `makeJailedCrush`      | `jailed-crush`      |
+| `goose`      | `makeJailedGoose`      | `jailed-goose`      |
 | `hermes-agent` | `makeJailedHermesAgent` | `jailed-hermes-agent` |
 | `opencode`   | `makeJailedOpencode`   | `jailed-opencode`   |
 | `pi`         | `makeJailedPi`         | `jailed-pi`         |
@@ -121,6 +122,14 @@ Provide read-write or read-only access to directories.
 (jailed-agents.lib.${system}.makeJailedOpencode {
   extraReadwriteDirs = ["~/projects"];
   extraReadonlyDirs = ["~/readonly-cache"];
+})
+```
+
+Some agents read from directories beyond their defaults. For example, Goose also uses `~/.agents` for global hints (`AGENTS.md`) and its installed-agents/plugins features — mount it if you rely on those:
+
+```nix
+(jailed-agents.lib.${system}.makeJailedGoose {
+  extraReadwriteDirs = [ "~/.agents" ];
 })
 ```
 
