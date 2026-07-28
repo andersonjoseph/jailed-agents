@@ -17,8 +17,13 @@ packages=(
 pass=0
 fail=0
 
-# --- Ensure goose config/data dirs exist so bwrap can bind-mount them ---
-mkdir -p ~/.config/goose ~/.local/share/goose ~/.local/state/goose
+# --- Ensure each agent's config/data dirs exist so bwrap can bind-mount them ---
+mkdir -p \
+  ~/.config/crush ~/.local/share/crush \
+  ~/.config/goose ~/.local/share/goose ~/.local/state/goose \
+  ~/.config/opencode ~/.local/share/opencode ~/.local/state/opencode \
+  ~/.hermes ~/.claude ~/.codex ~/.pi
+touch ~/.claude.json
 
 # --- Build and smoke-test each agent ---
 for package in "${packages[@]}"; do
