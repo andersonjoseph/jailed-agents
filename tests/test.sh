@@ -17,6 +17,9 @@ packages=(
 pass=0
 fail=0
 
+# --- Ensure goose config/data dirs exist so bwrap can bind-mount them ---
+mkdir -p ~/.config/goose ~/.local/share/goose ~/.local/state/goose
+
 # --- Build and smoke-test each agent ---
 for package in "${packages[@]}"; do
   echo "----------------------------------------"
