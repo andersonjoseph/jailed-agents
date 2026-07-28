@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 # Agents to build and smoke-test
 packages=(
   jailed-crush
+  jailed-goose
   jailed-opencode
   jailed-hermes-agent
   jailed-claude-code
