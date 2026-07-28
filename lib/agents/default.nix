@@ -13,6 +13,9 @@
   makeJailedCrush = import ./crush.nix {
     inherit makePreconfiguredAgent llm-agents system;
   };
+  makeJailedGoose = import ./goose.nix {
+    inherit makePreconfiguredAgent llm-agents system;
+  };
   makeJailedHermesAgent = import ./hermes-agent.nix {
     inherit makePreconfiguredAgent llm-agents system;
   };
