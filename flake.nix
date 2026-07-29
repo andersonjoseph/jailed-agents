@@ -74,6 +74,7 @@
             extraReadonlyDirs ? [ ],
             env ? { },
             enableNix ? false,
+            enableGitWorktrees ? { },
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -99,6 +100,10 @@
               else
                 throw "nixConfigDir must be null, a path string, or an attrset { path, writable }";
 
+            gitWorktrees = import ./lib/git-worktrees.nix {
+              inherit pkgs jail enableGitWorktrees;
+            };
+
             readonlyDirs =
               extraReadonlyDirs
               ++ pkgs.lib.optionals enableNix nixDaemonAccess.readonlyDirs
@@ -110,7 +115,8 @@
               ++ pkgs.lib.optionals enableNix nixDaemonAccess.readwriteDirs
               ++ pkgs.lib.optional (
                 resolvedNixConfigDir != null && resolvedNixConfigDir.writable
-              ) resolvedNixConfigDir.path;
+              ) resolvedNixConfigDir.path
+              ++ gitWorktrees.readwriteDirs;
             extraPackages = extraPkgs ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs;
           in
           jail name pkg (
@@ -123,6 +129,7 @@
               ++ [ (add-pkg-deps basePackages) ]
               ++ [ (add-pkg-deps extraPackages) ]
               ++ (pkgs.lib.mapAttrsToList set-env env)
+              ++ gitWorktrees.perms
             )
           );
 
@@ -140,6 +147,7 @@
             extraReadonlyDirs ? [ ],
             env ? { },
             enableNix ? false,
+            enableGitWorktrees ? { },
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -153,6 +161,7 @@
               extraReadonlyDirs
               env
               enableNix
+              enableGitWorktrees
               nixConfigDir
               baseJailOptions
               basePackages

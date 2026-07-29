@@ -192,6 +192,42 @@ in
 
 For a complete reference on available combinators, see the [jail.nix combinators documentation](https://alexdav.id/projects/jail-nix/combinators/).
 
+### Git Worktrees
+
+A git [worktree](https://git-scm.com/docs/git-worktree) keeps its `.git` directory in the **main repository**, separate from the worktree's working directory. The jail only mounts the directory you launch the agent from (`$PWD`), so launching an agent from inside a worktree breaks git: every command fails with `fatal: not a git repository`.
+
+`enableGitWorktrees` fixes this. When the agent is launched from inside a worktree, it automatically detects and mounts the shared `.git` directory read-write so that `status`, `log`, `commit`, etc. work as expected.
+
+```nix
+# Work inside an existing worktree (most common):
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  enableGitWorktrees = true;
+})
+```
+
+The option is an attribute set:
+
+| Field | Default | Purpose |
+| --- | --- | --- |
+| `enable` | `false` | Turn on the shared `.git` auto-mount. (Passing `enableGitWorktrees = true` is shorthand for `{ enable = true; }`.) |
+| `dir` | `null` | Directory (read-write) where the agent may **create** new worktrees, e.g. via `git worktree add`. This is just sugar for `extraReadwriteDirs = [ dir ]`; the directory must already exist on the host. |
+| `mountGitConfig` | `false` | Mount `~/.gitconfig` read-only so the agent inherits your global `user.name` / `user.email`. Uses a tolerant bind: a missing `~/.gitconfig` is skipped rather than aborting launch (unlike `extraReadonlyDirs`, which would hard-fail). |
+
+```nix
+# Full example: work inside worktrees AND create new ones, with global identity.
+(jailed-agents.lib.${system}.makeJailedCrush {
+  enableGitWorktrees = {
+    enable = true;
+    dir = "~/projects/myrepo-worktrees";
+    mountGitConfig = true;
+  };
+})
+```
+
+> **Identity:** the jail's home is an ephemeral tmpfs, so `~/.gitconfig` is not visible by default. Without `mountGitConfig`, set identity in the repo's own config (`git -C <repo> config user.email …`) — it lives in `.git/config` and travels with the shared `.git` mount automatically.
+
+> **Safety:** the resolver binds the shared `.git` only when `$PWD` is a genuine git worktree — it verifies that `$PWD/.git` is a gitdir file whose target resolves *inside* the shared `.git` directory. A plain directory, or a crafted `.git` pointer at some other repository, is never bound, so this feature cannot be used to reach an unrelated repo's `.git`. Because the check is structural rather than path-based, it works for repositories kept anywhere, including outside `$HOME`.
+
 ## Go Development Example
 
 Here is an example of how to set up a Go development environment with a jailed `crush` agent that has access to the Go toolchain.
@@ -251,6 +287,7 @@ makeJailed<AgentName> {
   extraReadonlyDirs ? [],
   env ? {},
   enableNix ? false,
+  enableGitWorktrees ? {},
   nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
@@ -269,6 +306,7 @@ makeJailedAgent {
   extraReadonlyDirs ? [],
   env ? {},
   enableNix ? false,
+  enableGitWorktrees ? {},
   nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
@@ -287,6 +325,7 @@ makeJailedAgent {
   > **Warning:** `enableNix = true` lets the agent build and execute arbitrary packages from nixpkgs via the Nix daemon, bypassing the sandbox's curated toolset. Only enable it for agents you trust to run arbitrary code.
 
 - **`nixConfigDir`**: Mounts a NixOS/system config directory into the jail so the agent can read (or edit) the declaration. Pass a path string to mount it read-only (e.g. `"/etc/nixos"`), or `{ path = "/etc/nixos"; writable = true; }` to mount it read-write. Defaults to `null` (nothing mounted). Independent of `enableNix`.
+- **`enableGitWorktrees`**: Mounts the shared `.git` directory when the agent is launched from inside a git worktree, so git commands work. `{ enable = true; }` is enough to work inside an existing worktree; `dir` lets the agent create new worktrees there (sugar for `extraReadwriteDirs`), and `mountGitConfig = true` mounts `~/.gitconfig` read-only, tolerating its absence. Defaults to `{ }`. See [Git Worktrees](#git-worktrees).
 - **`baseJailOptions`**: Overrides the default set of jail options.
 - **`basePackages`**: Overrides the default set of base packages.
 

@@ -56,6 +56,33 @@
             writable = true;
           };
         };
+
+        git-worktree-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "git-worktree-test";
+          pkg = pkgs.git;
+          configPaths = [ ];
+          enableGitWorktrees = true;
+        };
+
+        git-worktree-create-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "git-worktree-create-test";
+          pkg = pkgs.git;
+          configPaths = [ ];
+          enableGitWorktrees = {
+            enable = true;
+            dir = "~/jailed-agents-wt-create-test";
+          };
+        };
+
+        git-worktree-gitconfig-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "git-worktree-gitconfig-test";
+          pkg = pkgs.git;
+          configPaths = [ ];
+          enableGitWorktrees = {
+            enable = true;
+            mountGitConfig = true;
+          };
+        };
       };
     };
 }
