@@ -30,7 +30,7 @@ for package in "${packages[@]}"; do
   echo "----------------------------------------"
   echo "Building and testing $package..."
 
-  if ! nix build ".#$package"; then
+  if ! nix build --accept-flake-config ".#$package"; then
     echo "ERROR: Failed to build $package."
     ((fail++)) || true
     continue
@@ -51,7 +51,7 @@ done
 echo "----------------------------------------"
 echo "Testing env parameter propagation..."
 
-if ! nix build "./tests"; then
+if ! nix build --accept-flake-config "./tests"; then
   echo "ERROR: Failed to build env-test."
   ((fail++)) || true
 else
@@ -69,7 +69,7 @@ fi
 echo "----------------------------------------"
 echo "Testing enableNix..."
 
-if ! nix build "./tests#nix-enabled-test"; then
+if ! nix build --accept-flake-config "./tests#nix-enabled-test"; then
   echo "ERROR: Failed to build nix-enabled-test."
   ((fail++)) || true
 else
@@ -102,7 +102,7 @@ mkdir -p "$NIXCFG_DIR"
 echo "sentinel" > "$NIXCFG_DIR/configuration.nix"
 
 # readonly: read works, write fails
-if ! nix build "./tests#nixconfig-readonly-test"; then
+if ! nix build --accept-flake-config "./tests#nixconfig-readonly-test"; then
   echo "ERROR: Failed to build nixconfig-readonly-test."
   ((fail++)) || true
 else
@@ -119,7 +119,7 @@ else
 fi
 
 # writable: read and write both succeed
-if ! nix build "./tests#nixconfig-writable-test"; then
+if ! nix build --accept-flake-config "./tests#nixconfig-writable-test"; then
   echo "ERROR: Failed to build nixconfig-writable-test."
   ((fail++)) || true
 else
@@ -151,7 +151,7 @@ fi
 echo "----------------------------------------"
 echo "Testing common tools availability..."
 
-if ! nix build "./tests#tools-test"; then
+if ! nix build --accept-flake-config "./tests#tools-test"; then
   echo "ERROR: Failed to build tools-test."
   ((fail++)) || true
 else
