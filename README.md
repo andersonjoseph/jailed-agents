@@ -6,6 +6,8 @@ Secure Nix sandbox for LLM agents. Run AI coding agents in isolated environments
 
 `jailed-agents` provides a secure sandbox for running LLM coding agents using Nix and `jail.nix` (which is built on `bubblewrap`). It gives your AI agents the autonomy to be useful without giving them full access to your system.
 
+> **Linux only.** The sandbox is built on [`bubblewrap`](https://github.com/containers/bubblewrap), which depends on Linux namespaces (user, pid, net, …) and bind mounts. These have no equivalent on macOS/Darwin, so `jailed-agents` is **not compatible with Nix on macOS** and currently supports Linux only.
+
 ## Features
 
 - **Zero-Trust Sandbox**: By default, agents have no access to your home directory, SSH keys, or other sensitive files.
