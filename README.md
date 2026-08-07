@@ -159,6 +159,18 @@ Set environment variables inside the jail by copying them from the outside.
 
 Take care to not forward any secrets. Trying to forward nonexistent variables will result in an error.
 
+### Running under herdr
+
+[herdr](https://herdr.dev) detects jailed agents and shows their working/idle/blocked state in its sidebar with **no jail changes** — it reads the pane's screen from the host. Because the sandbox hides the real foreground process, give herdr a hint so it applies the right screen manifest:
+
+```bash
+HERDR_AGENT=pi jailed-pi        # use herdr's `pi` manifest for this pane
+```
+
+`HERDR_AGENT` is a host-side env var on the wrapper command (one of herdr's known agents: `pi`, `claude`, `codex`, etc), not something configured inside the jail. If herdr still can't see the agent process (some `bubblewrap` setups don't expose a terminal foreground process group), start the herdr server with `HERDR_PROCESS_DETECTION=child-groups`.
+
+> **Why not expose the herdr socket to the jail?** herdr's socket is a control API. It spawn panes, run commands, send keystrokes. Herdr serves with your full host privileges, and it doesn't distinguish sandboxed callers. Exposing it would let the agent open panes in directories the jail forbids, defeating the sandbox. So jailed-agents does **not** wire the socket in. The `HERDR_AGENT` hint gives you herdr's state tracking without that hole.
+
 ### Create a Custom Agent
 
 If an agent is not pre-configured, you can easily create a jail for it using `makeJailedAgent`.
