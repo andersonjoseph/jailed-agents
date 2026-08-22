@@ -74,6 +74,7 @@
             extraReadonlyDirs ? [ ],
             env ? { },
             enableNix ? false,
+            fwdEnv ? [ ],
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -122,6 +123,7 @@
               ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
               ++ [ (add-pkg-deps basePackages) ]
               ++ [ (add-pkg-deps extraPackages) ]
+              ++ (map fwd-env fwdEnv)
               ++ (pkgs.lib.mapAttrsToList set-env env)
             )
           );
@@ -140,6 +142,7 @@
             extraReadonlyDirs ? [ ],
             env ? { },
             enableNix ? false,
+            fwdEnv ? [ ],
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -153,6 +156,7 @@
               extraReadonlyDirs
               env
               enableNix
+              fwdEnv
               nixConfigDir
               baseJailOptions
               basePackages
