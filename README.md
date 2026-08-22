@@ -157,7 +157,7 @@ Set environment variables inside the jail by copying them from the outside.
 })
 ```
 
-Take care to not forward anything secrets. Trying to forward nonexistent variables will result in an error.
+Take care to not forward any secrets. Trying to forward nonexistent variables will result in an error.
 
 ### Create a Custom Agent
 
@@ -261,6 +261,7 @@ makeJailed<AgentName> {
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
+  fwdEnv ? [],
   enableNix ? false,
   nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
@@ -279,6 +280,7 @@ makeJailedAgent {
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
+  fwdEnv ? [],
   enableNix ? false,
   nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
@@ -293,6 +295,7 @@ makeJailedAgent {
 - **`extraReadwriteDirs`**: A list of directories to mount with read-write access.
 - **`extraReadonlyDirs`**: A list of directories to mount with read-only access.
 - **`env`**: An attribute set of environment variables to set inside the jail (e.g. `{ EDITOR = "nvim"; }`).
+- **`fwdEnv`**: A list of environment variables to forward from the host shell into the jail (e.g. `[ "PKG_CONFIG_PATH" ]`). Errors at startup if a variable is unset.
 - **`enableNix`**: When `true`, grants the agent access to the host Nix daemon: mounts `/nix` and `/etc/nix/nix.conf` read-only, the daemon socket `/nix/var/nix/daemon-socket` read-write, and adds the `nix` package.
 
   > **Warning:** `enableNix = true` lets the agent build and execute arbitrary packages from nixpkgs via the Nix daemon, bypassing the sandbox's curated toolset. Only enable it for agents you trust to run arbitrary code.
