@@ -148,6 +148,17 @@ Set environment variables inside the jail.
 })
 ```
 
+### Forward Environment Variables
+
+Set environment variables inside the jail by copying them from the outside.
+```nix
+(jailed-agents.lib.${system}.makeJailedPi {
+  fwdEnv = [ "PKG_CONFIG_PATH" ];
+})
+```
+
+Take care to not forward anything secrets. Trying to forward nonexistent variables will result in an error.
+
 ### Create a Custom Agent
 
 If an agent is not pre-configured, you can easily create a jail for it using `makeJailedAgent`.
