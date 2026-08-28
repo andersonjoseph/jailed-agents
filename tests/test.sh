@@ -55,7 +55,7 @@ if ! nix build --accept-flake-config "./tests"; then
   echo "ERROR: Failed to build env-test."
   ((fail++)) || true
 else
-  output=$(./result/bin/env-test -c 'echo "$MY_TEST_VAR $ANOTHER_VAR"')
+  output=$(./result/bin/env-test -c 'echo "$MY_TEST_VAR $ANOTHER_VAR"') || true
   if [ "$output" = "hello world" ]; then
     echo "SUCCESS: env vars correctly set in jail"
     ((pass++)) || true
@@ -73,7 +73,7 @@ if ! nix build --accept-flake-config "./tests#fwd-env-uppercase"; then
   echo "ERROR: Failed to build fwd-env-uppercase."
   ((fail++)) || true
 else
-  out=$(PKG_CONFIG_PATH=/demo ./result/bin/fwd-env-uppercase -c 'echo "$PKG_CONFIG_PATH"')
+  out=$(PKG_CONFIG_PATH=/demo ./result/bin/fwd-env-uppercase -c 'echo "$PKG_CONFIG_PATH"') || true
   if [ "$out" = "/demo" ]; then
     echo "SUCCESS: set variable forwarded into jail"
     ((pass++)) || true
@@ -97,7 +97,7 @@ if ! nix build --accept-flake-config "./tests#fwd-env-mixedcase"; then
   echo "ERROR: Failed to build fwd-env-mixedcase (mixed-case fwdEnv names must build)."
   ((fail++)) || true
 else
-  out=$(anthropicApiKey=dummy ./result/bin/fwd-env-mixedcase -c 'echo "$anthropicApiKey"')
+  out=$(anthropicApiKey=dummy ./result/bin/fwd-env-mixedcase -c 'echo "$anthropicApiKey"') || true
   if [ "$out" = "dummy" ]; then
     echo "SUCCESS: mixed-case variable builds and is forwarded"
     ((pass++)) || true
