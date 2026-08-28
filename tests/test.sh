@@ -65,6 +65,48 @@ else
   fi
 fi
 
+# --- Test fwdEnv (set vars forwarded, unset vars skipped) ---
+echo "----------------------------------------"
+echo "Testing fwdEnv..."
+
+if ! nix build --accept-flake-config "./tests#fwd-env-uppercase"; then
+  echo "ERROR: Failed to build fwd-env-uppercase."
+  ((fail++)) || true
+else
+  out=$(PKG_CONFIG_PATH=/demo ./result/bin/fwd-env-uppercase -c 'echo "$PKG_CONFIG_PATH"')
+  if [ "$out" = "/demo" ]; then
+    echo "SUCCESS: set variable forwarded into jail"
+    ((pass++)) || true
+  else
+    echo "ERROR: expected '/demo', got '$out'"
+    ((fail++)) || true
+  fi
+
+  # Unset variable must not fail the launch (try-fwd-env), and must be absent in the jail
+  if env -u PKG_CONFIG_PATH ./result/bin/fwd-env-uppercase -c '[ -z "${PKG_CONFIG_PATH+x}" ]'; then
+    echo "SUCCESS: unset variable skipped, jail starts without it"
+    ((pass++)) || true
+  else
+    echo "ERROR: unset variable broke the jail or leaked into it"
+    ((fail++)) || true
+  fi
+fi
+
+# Regression for #152: mixed-case names used to fail the build with shellcheck SC2154
+if ! nix build --accept-flake-config "./tests#fwd-env-mixedcase"; then
+  echo "ERROR: Failed to build fwd-env-mixedcase (mixed-case fwdEnv names must build)."
+  ((fail++)) || true
+else
+  out=$(anthropicApiKey=dummy ./result/bin/fwd-env-mixedcase -c 'echo "$anthropicApiKey"')
+  if [ "$out" = "dummy" ]; then
+    echo "SUCCESS: mixed-case variable builds and is forwarded"
+    ((pass++)) || true
+  else
+    echo "ERROR: expected 'dummy', got '$out'"
+    ((fail++)) || true
+  fi
+fi
+
 # --- Test enableNix (nix binary + daemon mounts) ---
 echo "----------------------------------------"
 echo "Testing enableNix..."

@@ -129,7 +129,7 @@
               ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
               ++ [ (add-pkg-deps basePackages) ]
               ++ [ (add-pkg-deps extraPackages) ]
-              ++ (map fwd-env fwdEnv)
+              ++ (map try-fwd-env fwdEnv)
               ++ (pkgs.lib.mapAttrsToList set-env env)
               ++ gitWorktrees.perms
             )
