@@ -83,6 +83,20 @@
             mountGitConfig = true;
           };
         };
+
+        fwd-env-uppercase = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "fwd-env-uppercase";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          fwdEnv = [ "PKG_CONFIG_PATH" ];
+        };
+
+        fwd-env-mixedcase = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "fwd-env-mixedcase";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          fwdEnv = [ "anthropicApiKey" ];
+        };
       };
     };
 }
