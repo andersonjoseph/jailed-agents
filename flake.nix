@@ -64,6 +64,13 @@
           pkgs = [ pkgs.nix ];
         };
 
+        openUrls = import ./lib/open-urls.nix {
+          inherit
+            jail
+            pkgs
+            ;
+        };
+
         makeJailedAgent =
           {
             name,
@@ -76,9 +83,11 @@
             enableNix ? false,
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
+            enableOpenUrls ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
+            extraJailOptions ? [ ],
           }:
           let
             # Resolved form of `nixConfigDir`: null, or { path, writable }.
@@ -124,6 +133,8 @@
             with jail.combinators;
             (
               baseJailOptions
+              ++ pkgs.lib.optionals enableOpenUrls [ openUrls ]
+              ++ extraJailOptions
               ++ (map (p: readonly (noescape p)) readonlyDirs)
               ++ [ mount-cwd ]
               ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
@@ -140,26 +151,31 @@
             defaultName,
             defaultPkg,
             configPaths,
+            defaultExtraPkgs ? [ ],
           }:
           {
             name ? defaultName,
             pkg ? defaultPkg,
             extraPkgs ? [ ],
+            extraJailOptions ? [ ],
             extraReadwriteDirs ? [ ],
             extraReadonlyDirs ? [ ],
             env ? { },
             enableNix ? false,
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
+            enableOpenUrls ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
           }:
           makeJailedAgent {
+            extraPkgs = defaultExtraPkgs ++ extraPkgs;
             inherit
               name
               pkg
-              extraPkgs
+              enableOpenUrls
+              extraJailOptions
               extraReadwriteDirs
               extraReadonlyDirs
               env
@@ -174,13 +190,21 @@
           };
 
         agents = import ./lib/agents {
-          inherit makePreconfiguredAgent llm-agents system;
+          inherit
+            makePreconfiguredAgent
+            llm-agents
+            pkgs
+            system
+            ;
         };
 
       in
       {
         lib = {
-          inherit commonJailOptions;
+          inherit
+            commonJailOptions
+            openUrls
+            ;
 
           inherit makeJailedAgent;
           inherit (agents)

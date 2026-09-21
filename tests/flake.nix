@@ -97,6 +97,26 @@
           configPaths = [ ];
           fwdEnv = [ "anthropicApiKey" ];
         };
+
+        open-urls-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "open-urls-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          extraJailOptions = [ jailed-agents.lib.${system}.openUrls ];
+        };
+
+        # covers the preconfigured builder path (extraJailOptions on makeJailedOpencode)
+        open-urls-preconfigured-test = jailed-agents.lib.${system}.makeJailedOpencode {
+          extraJailOptions = [ jailed-agents.lib.${system}.openUrls ];
+        };
+
+        # covers the enableOpenUrls flag
+        open-urls-flag-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "open-urls-flag-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          enableOpenUrls = true;
+        };
       };
     };
 }
