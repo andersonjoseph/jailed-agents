@@ -159,6 +159,24 @@ Set environment variables inside the jail by copying them from the outside.
 
 Take care to not forward any secrets. Variables that are unset in the host shell are skipped.
 
+### Opening URLs in the Browser
+
+`opencode` (and other CLIs with login flows) open URLs by spawning `xdg-open`. That fails inside a sandbox: there is no browser there, and no desktop session to launch one. The `openUrls` jail option fixes this by relaying URL opens to the host through a pipe:
+
+```
+browserchannel (in jail, set as $BROWSER) → FIFO → host handler → $BROWSER or xdg-open
+```
+
+Only `http://` and `https://` URLs are relayed; anything else is dropped. No agent enables this by default, since it lets the jailed program ask your host to open URLs. To opt in:
+
+```nix
+(jailed-agents.lib.${system}.makeJailedOpencode {
+  enableOpenUrls = true;
+})
+```
+
+The same permission is also available directly as `jailed-agents.lib.${system}.openUrls`, for composing into `extraJailOptions` alongside other jail permissions. The permission bundles `xdg-utils` itself, so nothing else is needed at the call site. One caveat: the jailed caller blocks until the host handler returns, and if your browser inherits and holds the relayed stdout open, that call can hang — retry, or open the printed URL manually.
+
 ### Running under herdr
 
 [herdr](https://herdr.dev) detects jailed agents and shows their working/idle/blocked state in its sidebar with **no jail changes** — it reads the pane's screen from the host. Because the sandbox hides the real foreground process, give herdr a hint so it applies the right screen manifest:
@@ -306,6 +324,8 @@ makeJailed<AgentName> {
   name ? "jailed-<agent-name>",
   pkg ? /* default package from llm-agents.nix */,
   extraPkgs ? [],
+  extraJailOptions ? [],
+  enableOpenUrls ? false,
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
@@ -326,6 +346,8 @@ makeJailedAgent {
   pkg,
   configPaths,
   extraPkgs ? [],
+  extraJailOptions ? [],
+  enableOpenUrls ? false,
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
@@ -342,6 +364,7 @@ makeJailedAgent {
 - **`pkg`**: (Required) The agent package to sandbox.
 - **`configPaths`**: (Required for `makeJailedAgent`) A list of essential configuration paths the agent needs read-write access to (e.g., `["~/.config/my-agent"]`).
 - **`extraPkgs`**: A list of additional packages to include in the sandbox.
+- **`extraJailOptions`**: A list of extra jail permissions appended to `baseJailOptions` (e.g. `[ openUrls ]`). Pre-configured builders merge this on top of their own defaults.
 - **`extraReadwriteDirs`**: A list of directories to mount with read-write access.
 - **`extraReadonlyDirs`**: A list of directories to mount with read-only access.
 - **`env`**: An attribute set of environment variables to set inside the jail (e.g. `{ EDITOR = "nvim"; }`).
@@ -352,6 +375,7 @@ makeJailedAgent {
 
 - **`nixConfigDir`**: Mounts a NixOS/system config directory into the jail so the agent can read (or edit) the declaration. Pass a path string to mount it read-only (e.g. `"/etc/nixos"`), or `{ path = "/etc/nixos"; writable = true; }` to mount it read-write. Defaults to `null` (nothing mounted). Independent of `enableNix`.
 - **`enableGitWorktrees`**: Mounts the shared `.git` directory when the agent is launched from inside a git worktree, so git commands work. `{ enable = true; }` is enough to work inside an existing worktree; `dir` lets the agent create new worktrees there (sugar for `extraReadwriteDirs`), and `mountGitConfig = true` mounts `~/.gitconfig` read-only, tolerating its absence. Defaults to `{ }`. See [Git Worktrees](#git-worktrees).
+- **`enableOpenUrls`**: When `true`, adds the `openUrls` permission: `xdg-utils` in the jail plus a relay that opens `http(s)://` URLs on the host. Defaults to `false`. See [Opening URLs in the Browser](#opening-urls-in-the-browser).
 - **`baseJailOptions`**: Overrides the default set of jail options.
 - **`basePackages`**: Overrides the default set of base packages.
 
@@ -359,6 +383,7 @@ makeJailedAgent {
 
 - **Common Packages**: All agents include `bash`, `curl`, `wget`, `jq`, `git`, `ripgrep`, `gnugrep`, `gawk`, `ps`, `findutils`, `gzip`, `unzip`, `gnutar`, and `diffutils`.
 - **Common Jail Options**: All jails include network access, system timezone propagation, prevention of new session creation, and mounting of the current working directory.
+- **opencode extras**: `jailed-opencode` additionally includes `xdg-utils`. `opencode web` serves its web interface either way, but it also tries to open the URL in a browser, and without `xdg-open` present that attempt dumps a not-found stack trace. Auto-opening is opt-in via `enableOpenUrls = true`.
 
 ## Why Not Docker?
 

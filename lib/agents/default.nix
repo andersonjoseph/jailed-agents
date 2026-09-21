@@ -1,6 +1,7 @@
 {
   makePreconfiguredAgent,
   llm-agents,
+  pkgs,
   system,
 }:
 {
@@ -20,7 +21,12 @@
     inherit makePreconfiguredAgent llm-agents system;
   };
   makeJailedOpencode = import ./opencode.nix {
-    inherit makePreconfiguredAgent llm-agents system;
+    inherit
+      makePreconfiguredAgent
+      llm-agents
+      pkgs
+      system
+      ;
   };
   makeJailedPi = import ./pi.nix {
     inherit makePreconfiguredAgent llm-agents system;

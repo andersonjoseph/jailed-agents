@@ -181,6 +181,76 @@ fi
 
 rm -rf "$NIXCFG_DIR"
 
+# --- Test openUrls (xdg-open relays http(s) URLs to the host browser) ---
+echo "----------------------------------------"
+echo "Testing openUrls..."
+
+if ! nix build --accept-flake-config "./tests#open-urls-test"; then
+  echo "ERROR: Failed to build open-urls-test."
+  ((fail++)) || true
+else
+  # BROWSER=echo acts as a fake host browser: the relayed URL comes back via stdout
+  out=$(BROWSER=echo ./result/bin/open-urls-test -c 'xdg-open https://example.com') || true
+  if [ "$out" = "https://example.com" ]; then
+    echo "SUCCESS: xdg-open inside jail relays http(s) URL to host browser"
+    ((pass++)) || true
+  else
+    echo "ERROR: expected 'https://example.com', got '$out'"
+    ((fail++)) || true
+  fi
+
+  # Non-http(s) schemes must not reach the host handler
+  out=$(BROWSER=echo ./result/bin/open-urls-test -c 'xdg-open file:///etc/hostname') || true
+  if [ -z "$out" ]; then
+    echo "SUCCESS: non-http(s) URL is not relayed to the host"
+    ((pass++)) || true
+  else
+    echo "ERROR: non-http(s) URL was relayed to the host: '$out'"
+    ((fail++)) || true
+  fi
+
+  # Host BROWSER unset → fallback to host xdg-open (fake one on PATH as observer)
+  fakebin=$(mktemp -d)
+  printf '#!/usr/bin/env bash\nprintf "xdg-open %%s\\n" "$1"\n' > "$fakebin/xdg-open"
+  chmod +x "$fakebin/xdg-open"
+  out=$(env -u BROWSER PATH="$fakebin:$PATH" ./result/bin/open-urls-test -c 'xdg-open https://example.com') || true
+  rm -rf "$fakebin"
+  if [ "$out" = "xdg-open https://example.com" ]; then
+    echo "SUCCESS: host BROWSER unset falls back to host xdg-open"
+    ((pass++)) || true
+  else
+    echo "ERROR: expected 'xdg-open https://example.com', got '$out'"
+    ((fail++)) || true
+  fi
+
+  # enableOpenUrls flag must produce the same relay
+  if ! nix build --accept-flake-config "./tests#open-urls-flag-test"; then
+    echo "ERROR: Failed to build open-urls-flag-test."
+    ((fail++)) || true
+  else
+    out=$(BROWSER=echo ./result/bin/open-urls-flag-test -c 'xdg-open https://flag.example.com') || true
+    if [ "$out" = "https://flag.example.com" ]; then
+      echo "SUCCESS: enableOpenUrls flag relays http(s) URL to host browser"
+      ((pass++)) || true
+    else
+      echo "ERROR: expected 'https://flag.example.com', got '$out'"
+      ((fail++)) || true
+    fi
+  fi
+fi
+
+# --- Preconfigured builders must accept extraJailOptions (README example) ---
+echo "----------------------------------------"
+echo "Testing extraJailOptions on preconfigured builder..."
+
+if nix build --accept-flake-config "./tests#open-urls-preconfigured-test"; then
+  echo "SUCCESS: makeJailedOpencode accepts extraJailOptions"
+  ((pass++)) || true
+else
+  echo "ERROR: makeJailedOpencode rejected extraJailOptions"
+  ((fail++)) || true
+fi
+
 # --- Test git worktree support (enableGitWorktrees) ---
 echo "----------------------------------------"
 echo "Testing enableGitWorktrees..."
