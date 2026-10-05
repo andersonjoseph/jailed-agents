@@ -28,6 +28,14 @@
       system
       ;
   };
+  makeJailedOpencode2 = import ./opencode2.nix {
+    inherit
+      makePreconfiguredAgent
+      llm-agents
+      pkgs
+      system
+      ;
+  };
   makeJailedPi = import ./pi.nix {
     inherit makePreconfiguredAgent llm-agents system;
   };
