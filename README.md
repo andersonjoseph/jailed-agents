@@ -87,6 +87,7 @@ Run `nix develop`, and the `jailed-opencode` command will be available in your s
 | `goose`      | `makeJailedGoose`      | `jailed-goose`      |
 | `hermes-agent` | `makeJailedHermesAgent` | `jailed-hermes-agent` |
 | `opencode`   | `makeJailedOpencode`   | `jailed-opencode`   |
+| `opencode2`  | `makeJailedOpencode2`  | `jailed-opencode2`  |
 | `pi`         | `makeJailedPi`         | `jailed-pi`         |
 
 These builders come with sensible defaults and include the necessary config paths for the agent to function correctly out of the box.
