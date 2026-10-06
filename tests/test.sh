@@ -8,6 +8,7 @@ packages=(
   jailed-crush
   jailed-goose
   jailed-opencode
+  jailed-opencode2
   jailed-hermes-agent
   jailed-claude-code
   jailed-codex
@@ -21,6 +22,7 @@ fail=0
 mkdir -p \
   ~/.config/crush ~/.local/share/crush \
   ~/.config/goose ~/.local/share/goose ~/.local/state/goose \
+  ~/.opencode \
   ~/.config/opencode ~/.local/share/opencode ~/.local/state/opencode \
   ~/.hermes ~/.claude ~/.codex ~/.pi
 touch ~/.claude.json
