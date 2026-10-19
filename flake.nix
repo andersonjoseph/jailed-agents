@@ -128,23 +128,48 @@
               ) resolvedNixConfigDir.path
               ++ gitWorktrees.readwriteDirs;
             extraPackages = extraPkgs ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs;
+
+            guardedJail =
+              pkg':
+              let
+                jailed = jail name pkg' (
+                  with jail.combinators;
+                  (
+                    baseJailOptions
+                    ++ pkgs.lib.optionals enableOpenUrls [ openUrls ]
+                    ++ extraJailOptions
+                    ++ (map (p: readonly (noescape p)) readonlyDirs)
+                    ++ [ mount-cwd ]
+                    ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
+                    ++ [ (add-pkg-deps basePackages) ]
+                    ++ [ (add-pkg-deps extraPackages) ]
+                    ++ (map try-fwd-env fwdEnv)
+                    ++ (pkgs.lib.mapAttrsToList set-env env)
+                    ++ gitWorktrees.perms
+                  )
+                );
+              in
+              pkgs.writeShellApplication {
+                inherit name;
+                text = ''
+                  export TERM="''${TERM:-dumb}"
+                  export LANG="''${LANG:-C.UTF-8}"
+                  export PATH="''${PATH:-/bin}"
+                  if [ -z "''${HOME:-}" ]; then
+                    unset HOME
+                    HOME=~
+                    export HOME
+                  fi
+                  exec "${jailed}/bin/${name}" "$@"
+                '';
+              }
+              // pkgs.lib.optionalAttrs (pkg' ? man) { inherit (pkg') man; }
+              // pkgs.lib.optionalAttrs (pkg' ? shellPath) { inherit (pkg') shellPath; }
+              // pkgs.lib.optionalAttrs (pkg' ? override) {
+                override = overrideFn: guardedJail (pkg'.override overrideFn);
+              };
           in
-          jail name pkg (
-            with jail.combinators;
-            (
-              baseJailOptions
-              ++ pkgs.lib.optionals enableOpenUrls [ openUrls ]
-              ++ extraJailOptions
-              ++ (map (p: readonly (noescape p)) readonlyDirs)
-              ++ [ mount-cwd ]
-              ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
-              ++ [ (add-pkg-deps basePackages) ]
-              ++ [ (add-pkg-deps extraPackages) ]
-              ++ (map try-fwd-env fwdEnv)
-              ++ (pkgs.lib.mapAttrsToList set-env env)
-              ++ gitWorktrees.perms
-            )
-          );
+          guardedJail pkg;
 
         makePreconfiguredAgent =
           {
