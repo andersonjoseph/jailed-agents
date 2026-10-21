@@ -109,6 +109,33 @@ else
   fi
 fi
 
+# --- Test headless parents: TERM LANG HOME PATH unset must not kill the wrapper ---
+echo "----------------------------------------"
+echo "Testing headless parent environment..."
+
+if ! nix build --accept-flake-config "./tests#headless-env-test"; then
+  echo "ERROR: Failed to build headless-env-test."
+  ((fail++)) || true
+else
+  out=$(env -u TERM -u LANG -u HOME -u PATH ./result/bin/headless-env-test -c 'echo headless-ok') || true
+  if [ "$out" = "headless-ok" ]; then
+    echo "SUCCESS: jail starts with TERM LANG HOME PATH unset"
+    ((pass++)) || true
+  else
+    echo "ERROR: unset TERM LANG HOME PATH broke the jail"
+    ((fail++)) || true
+  fi
+
+  out=$(env TERM= LANG= HOME= PATH= ./result/bin/headless-env-test -c 'echo headless-empty-ok') || true
+  if [ "$out" = "headless-empty-ok" ]; then
+    echo "SUCCESS: jail starts with TERM LANG HOME PATH empty"
+    ((pass++)) || true
+  else
+    echo "ERROR: empty TERM LANG HOME PATH broke the jail"
+    ((fail++)) || true
+  fi
+fi
+
 # --- Test enableNix (nix binary + daemon mounts) ---
 echo "----------------------------------------"
 echo "Testing enableNix..."

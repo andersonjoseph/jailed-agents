@@ -91,6 +91,12 @@
           fwdEnv = [ "PKG_CONFIG_PATH" ];
         };
 
+        headless-env-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "headless-env-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+        };
+
         fwd-env-mixedcase = jailed-agents.lib.${system}.makeJailedAgent {
           name = "fwd-env-mixedcase";
           pkg = pkgs.bashInteractive;
