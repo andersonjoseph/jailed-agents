@@ -20,6 +20,9 @@
   makeJailedHermesAgent = import ./hermes-agent.nix {
     inherit makePreconfiguredAgent llm-agents system;
   };
+  makeJailedOmp = import ./omp.nix {
+    inherit makePreconfiguredAgent llm-agents system;
+  };
   makeJailedOpencode = import ./opencode.nix {
     inherit
       makePreconfiguredAgent

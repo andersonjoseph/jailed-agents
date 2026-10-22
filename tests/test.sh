@@ -13,6 +13,7 @@ packages=(
   jailed-claude-code
   jailed-codex
   jailed-pi
+  jailed-omp
 )
 
 pass=0
@@ -24,7 +25,7 @@ mkdir -p \
   ~/.config/goose ~/.local/share/goose ~/.local/state/goose \
   ~/.opencode \
   ~/.config/opencode ~/.local/share/opencode ~/.local/state/opencode \
-  ~/.hermes ~/.claude ~/.codex ~/.pi
+  ~/.hermes ~/.claude ~/.codex ~/.pi ~/.omp
 touch ~/.claude.json
 
 # --- Build and smoke-test each agent ---
