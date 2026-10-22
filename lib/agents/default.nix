@@ -21,7 +21,12 @@
     inherit makePreconfiguredAgent llm-agents system;
   };
   makeJailedOmp = import ./omp.nix {
-    inherit makePreconfiguredAgent llm-agents system;
+    inherit
+      makePreconfiguredAgent
+      llm-agents
+      pkgs
+      system
+      ;
   };
   makeJailedOpencode = import ./opencode.nix {
     inherit
