@@ -3,6 +3,7 @@
   llm-agents,
   pkgs,
   system,
+  jail,
 }:
 {
   makeJailedClaudeCode = import ./claude-code.nix {
@@ -19,6 +20,15 @@
   };
   makeJailedHermesAgent = import ./hermes-agent.nix {
     inherit makePreconfiguredAgent llm-agents system;
+  };
+  makeJailedOmp = import ./omp.nix {
+    inherit
+      makePreconfiguredAgent
+      llm-agents
+      pkgs
+      system
+      jail
+      ;
   };
   makeJailedOpencode = import ./opencode.nix {
     inherit

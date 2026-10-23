@@ -193,6 +193,8 @@
             defaultPkg,
             configPaths,
             defaultExtraPkgs ? [ ],
+            defaultEnv ? { },
+            defaultExtraJailOptions ? [ ],
           }:
           {
             name ? defaultName,
@@ -213,15 +215,15 @@
           }:
           makeJailedAgent {
             extraPkgs = defaultExtraPkgs ++ extraPkgs;
+            env = defaultEnv // env;
+            extraJailOptions = defaultExtraJailOptions ++ extraJailOptions;
             inherit
               name
               pkg
               enableOpenUrls
               enableT3
-              extraJailOptions
               extraReadwriteDirs
               extraReadonlyDirs
-              env
               enableNix
               fwdEnv
               enableGitWorktrees
@@ -238,6 +240,7 @@
             llm-agents
             pkgs
             system
+            jail
             ;
         };
 
@@ -256,6 +259,7 @@
             makeJailedCrush
             makeJailedGoose
             makeJailedHermesAgent
+            makeJailedOmp
             makeJailedOpencode
             makeJailedOpencode2
             makeJailedPi
@@ -272,6 +276,7 @@
           jailed-crush = agents.makeJailedCrush { };
           jailed-goose = agents.makeJailedGoose { };
           jailed-hermes-agent = agents.makeJailedHermesAgent { };
+          jailed-omp = agents.makeJailedOmp { };
           jailed-opencode = agents.makeJailedOpencode { };
           jailed-opencode2 = agents.makeJailedOpencode2 { };
           jailed-pi = agents.makeJailedPi { };
