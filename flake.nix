@@ -57,10 +57,7 @@
 
         nixDaemonAccess = {
           readwriteDirs = [ "/nix/var/nix/daemon-socket" ];
-          readonlyDirs = [
-            "/nix"
-            "/etc/nix/nix.conf"
-          ];
+          readonlyDirs = [ "/etc/nix/nix.conf" ];
           pkgs = [ pkgs.nix ];
         };
 
@@ -155,6 +152,7 @@
                     ++ pkgs.lib.optionals enableOpenUrls [ openUrls ]
                     ++ extraJailOptions
                     ++ (map (p: readonly (noescape p)) readonlyDirs)
+                    ++ pkgs.lib.optionals enableNix [ (defer (ro-bind "/nix" "/nix")) ]
                     ++ [ mount-cwd ]
                     ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
                     ++ [ (add-pkg-deps basePackages) ]
