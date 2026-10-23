@@ -3,6 +3,7 @@
   llm-agents,
   pkgs,
   system,
+  jail,
 }:
 {
   makeJailedClaudeCode = import ./claude-code.nix {
@@ -26,6 +27,7 @@
       llm-agents
       pkgs
       system
+      jail
       ;
   };
   makeJailedOpencode = import ./opencode.nix {
