@@ -386,7 +386,7 @@ makeJailedAgent {
 - **Common Packages**: All agents include `bash`, `curl`, `wget`, `jq`, `git`, `ripgrep`, `gnugrep`, `gawk`, `ps`, `findutils`, `gzip`, `unzip`, `gnutar`, and `diffutils`.
 - **Common Jail Options**: All jails include network access, system timezone propagation, prevention of new session creation, and mounting of the current working directory.
 - **opencode extras**: `jailed-opencode` additionally includes `xdg-utils`. `opencode web` serves its web interface either way, but it also tries to open the URL in a browser, and without `xdg-open` present that attempt dumps a not-found stack trace. Auto-opening is opt-in via `enableOpenUrls = true`.
-- **omp extras**: `jailed-omp` additionally includes `chromium`. omp prefers a system Chromium over its managed download (which cannot execute on NixOS), and its browser tool launches it with `--no-sandbox` inside the jail — bubblewrap remains the security boundary.
+- **omp extras**: `jailed-omp` additionally includes `chromium`, plus `dejavu_fonts` and a generated fontconfig config (`FONTCONFIG_FILE`) so browser renders have usable fonts inside the tmpfs jail. omp prefers a system Chromium over its managed download (which cannot execute on NixOS), and its browser tool launches it with `--no-sandbox` inside the jail — bubblewrap remains the security boundary.
 
 ## Why Not Docker?
 

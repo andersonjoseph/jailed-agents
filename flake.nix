@@ -193,6 +193,7 @@
             defaultPkg,
             configPaths,
             defaultExtraPkgs ? [ ],
+            defaultEnv ? { },
           }:
           {
             name ? defaultName,
@@ -213,6 +214,7 @@
           }:
           makeJailedAgent {
             extraPkgs = defaultExtraPkgs ++ extraPkgs;
+            env = defaultEnv // env;
             inherit
               name
               pkg
@@ -221,7 +223,6 @@
               extraJailOptions
               extraReadwriteDirs
               extraReadonlyDirs
-              env
               enableNix
               fwdEnv
               enableGitWorktrees
