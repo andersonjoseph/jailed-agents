@@ -61,20 +61,6 @@
           pkgs = [ pkgs.nix ];
         };
 
-        # T3 Code hosts agent sessions with an MCP extension under ~/.t3/caches
-        # and injects T3_* env. The bind keeps the agent from exiting at
-        # startup; the forwarded env lets the session's t3-code tools connect.
-        t3Integration = {
-          readonlyDirs = [ "~/.t3/caches/pi-t3-mcp-extension.ts" ];
-          fwdEnv = [
-            "T3_MCP_URL"
-            "T3_MCP_BEARER_TOKEN"
-            "T3_PI_MCP_EXTENSION_PATH"
-            "T3_PI_RUNTIME_MODE"
-            "T3CODE_CLI_PATH"
-          ];
-        };
-
         openUrls = import ./lib/open-urls.nix {
           inherit
             jail
@@ -95,7 +81,6 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
-            enableT3 ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -129,7 +114,6 @@
             readonlyDirs =
               extraReadonlyDirs
               ++ pkgs.lib.optionals enableNix nixDaemonAccess.readonlyDirs
-              ++ pkgs.lib.optionals enableT3 t3Integration.readonlyDirs
               ++ pkgs.lib.optional (
                 resolvedNixConfigDir != null && !resolvedNixConfigDir.writable
               ) resolvedNixConfigDir.path;
@@ -157,7 +141,7 @@
                     ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
                     ++ [ (add-pkg-deps basePackages) ]
                     ++ [ (add-pkg-deps extraPackages) ]
-                    ++ (map try-fwd-env (fwdEnv ++ pkgs.lib.optionals enableT3 t3Integration.fwdEnv))
+                    ++ (map try-fwd-env fwdEnv)
                     ++ (pkgs.lib.mapAttrsToList set-env env)
                     ++ gitWorktrees.perms
                   )
@@ -206,7 +190,6 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
-            enableT3 ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -219,7 +202,6 @@
               name
               pkg
               enableOpenUrls
-              enableT3
               extraReadwriteDirs
               extraReadonlyDirs
               enableNix
