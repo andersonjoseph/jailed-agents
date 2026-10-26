@@ -71,6 +71,10 @@
             "T3_MCP_BEARER_TOKEN"
             "T3_PI_MCP_EXTENSION_PATH"
             "T3_PI_RUNTIME_MODE"
+            "CODEX_INTERNAL_ORIGINATOR_OVERRIDE"
+            "OPENCODE_SERVER_PASSWORD"
+            "OPENCODE_PASSWORD"
+            "OPENCODE_CONFIG_CONTENT"
           ];
         };
 
