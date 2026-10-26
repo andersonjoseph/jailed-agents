@@ -61,6 +61,19 @@
           pkgs = [ pkgs.nix ];
         };
 
+        t3Integration = {
+          readonlyPaths = [
+            "~/.t3/caches/pi-t3-mcp-extension.ts"
+            "~/.t3/userdata/attachments"
+          ];
+          fwdEnv = [
+            "T3_MCP_URL"
+            "T3_MCP_BEARER_TOKEN"
+            "T3_PI_MCP_EXTENSION_PATH"
+            "T3_PI_RUNTIME_MODE"
+          ];
+        };
+
         openUrls = import ./lib/open-urls.nix {
           inherit
             jail
@@ -81,6 +94,7 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
+            enableT3 ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -136,12 +150,13 @@
                     ++ pkgs.lib.optionals enableOpenUrls [ openUrls ]
                     ++ extraJailOptions
                     ++ (map (p: readonly (noescape p)) readonlyDirs)
+                    ++ pkgs.lib.optionals enableT3 (map (p: try-readonly (noescape p)) t3Integration.readonlyPaths)
                     ++ pkgs.lib.optionals enableNix [ (defer (ro-bind "/nix" "/nix")) ]
                     ++ [ mount-cwd ]
                     ++ (map (p: readwrite (noescape p)) (configPaths ++ readwriteDirs))
                     ++ [ (add-pkg-deps basePackages) ]
                     ++ [ (add-pkg-deps extraPackages) ]
-                    ++ (map try-fwd-env fwdEnv)
+                    ++ (map try-fwd-env (fwdEnv ++ pkgs.lib.optionals enableT3 t3Integration.fwdEnv))
                     ++ (pkgs.lib.mapAttrsToList set-env env)
                     ++ gitWorktrees.perms
                   )
@@ -190,6 +205,7 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
+            enableT3 ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -202,6 +218,7 @@
               name
               pkg
               enableOpenUrls
+              enableT3
               extraReadwriteDirs
               extraReadonlyDirs
               enableNix
