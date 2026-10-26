@@ -123,6 +123,14 @@
           configPaths = [ ];
           enableOpenUrls = true;
         };
+
+        # covers the enableT3 flag
+        t3-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "t3-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          enableT3 = true;
+        };
       };
     };
 }

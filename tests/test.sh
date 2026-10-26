@@ -385,6 +385,53 @@ fi
 
 rm -rf "$WT_ROOT" "$WT_CREATE_DIR"
 
+# --- Test enableT3 (T3 Code mounts and env forwarding) ---
+echo "----------------------------------------"
+echo "Testing enableT3..."
+
+if ! nix build --accept-flake-config "./tests#t3-test"; then
+  echo "ERROR: Failed to build t3-test."
+  ((fail++)) || true
+else
+  # (A) with ~/.t3 present: files readable, env forwarded, extension read-only
+  T3_HOME="$(mktemp -d)"
+  mkdir -p "$T3_HOME/.t3/caches" "$T3_HOME/.t3/userdata/attachments"
+  echo "t3-ext-sentinel" > "$T3_HOME/.t3/caches/pi-t3-mcp-extension.ts"
+  echo "t3-att-sentinel" > "$T3_HOME/.t3/userdata/attachments/a.txt"
+
+  t3_ext="$(HOME="$T3_HOME" ./result/bin/t3-test -c 'cat ~/.t3/caches/pi-t3-mcp-extension.ts' 2>/dev/null || true)"
+  t3_att="$(HOME="$T3_HOME" ./result/bin/t3-test -c 'cat ~/.t3/userdata/attachments/a.txt' 2>/dev/null || true)"
+  t3_env="$(T3_MCP_URL=http://127.0.0.1:9 T3_MCP_BEARER_TOKEN=t3-token T3_PI_MCP_EXTENSION_PATH=/ext/path.ts T3_PI_RUNTIME_MODE=rpc HOME="$T3_HOME" ./result/bin/t3-test -c 'printf "%s|%s|%s|%s" "$T3_MCP_URL" "$T3_MCP_BEARER_TOKEN" "$T3_PI_MCP_EXTENSION_PATH" "$T3_PI_RUNTIME_MODE"' 2>/dev/null || true)"
+  t3_write_failed=0
+  HOME="$T3_HOME" ./result/bin/t3-test -c 'echo mutated > ~/.t3/caches/pi-t3-mcp-extension.ts' 2>/dev/null || t3_write_failed=1
+  t3_att_write_failed=0
+  HOME="$T3_HOME" ./result/bin/t3-test -c 'echo mutated > ~/.t3/userdata/attachments/new.txt' 2>/dev/null || t3_att_write_failed=1
+  t3_after="$(cat "$T3_HOME/.t3/caches/pi-t3-mcp-extension.ts")"
+
+  if [ "$t3_ext" = "t3-ext-sentinel" ] && [ "$t3_att" = "t3-att-sentinel" ] \
+     && [ "$t3_env" = "http://127.0.0.1:9|t3-token|/ext/path.ts|rpc" ] \
+     && [ "$t3_write_failed" -eq 1 ] && [ "$t3_att_write_failed" -eq 1 ] && [ "$t3_after" = "t3-ext-sentinel" ]; then
+    echo "SUCCESS: enableT3 mounts ~/.t3 read-only and forwards T3_* env"
+    ((pass++)) || true
+  else
+    echo "ERROR: enableT3 misbehaved (ext='$t3_ext', att='$t3_att', env='$t3_env', write_failed=$t3_write_failed, att_write_failed=$t3_att_write_failed, after='$t3_after')"
+    ((fail++)) || true
+  fi
+  rm -rf "$T3_HOME"
+
+  # (B) without ~/.t3: the jail still launches (try-readonly tolerates absence)
+  T3_EMPTY_HOME="$(mktemp -d)"
+  t3_out="$(HOME="$T3_EMPTY_HOME" ./result/bin/t3-test -c 'echo t3-launch-ok' 2>&1)" || true
+  if [ "$t3_out" = "t3-launch-ok" ]; then
+    echo "SUCCESS: jail launches when ~/.t3 is missing"
+    ((pass++)) || true
+  else
+    echo "ERROR: missing ~/.t3 broke the jail launch (got '$t3_out')"
+    ((fail++)) || true
+  fi
+  rm -rf "$T3_EMPTY_HOME"
+fi
+
 # --- Summary ---
 echo "----------------------------------------"
 echo "Results: $pass passed, $fail failed"
