@@ -193,26 +193,51 @@ HERDR_AGENT=pi jailed-pi        # use herdr's `pi` manifest for this pane
 
 ### Running under T3 Code
 
-T3 Code can drive a jailed pi agent as its coding agent. Set `enableT3 = true` on the pi jail for this. The option mounts the driver's extension (`~/.t3/caches/pi-t3-mcp-extension.ts`) and its chat attachments (`~/.t3/userdata/attachments`) read-only. It forwards `T3_MCP_URL`, `T3_MCP_BEARER_TOKEN`, `T3_PI_MCP_EXTENSION_PATH`, and `T3_PI_RUNTIME_MODE` from the host shell. The jail still starts when `~/.t3` is absent: each launch skips the missing mounts. This serves the T3 pi driver only; other T3 drivers are not covered. The extension talks to T3's MCP server on `127.0.0.1`, so the jail needs network access, which `commonJailOptions` grants by default.
+T3 Code can drive a jailed agent as its coding agent. Set `enableT3 = true` on the jail. The option mounts the pi extension (`~/.t3/caches/pi-t3-mcp-extension.ts`) and the chat attachments (`~/.t3/userdata/attachments`) read-only. It also forwards the T3 driver variables from the host shell. Each driver uses its own subset:
 
-Set `enableGitWorktrees = true` too. T3 threads can run in worktrees under `~/.t3/worktrees`, and git inside the jail needs the shared `.git` of those worktrees.
+- `T3_MCP_URL`, `T3_MCP_BEARER_TOKEN`: T3's MCP server, used by the pi extension. The claude driver gets the same server through its `--mcp-config` argument, so it needs no T3 env.
+- `T3_PI_MCP_EXTENSION_PATH`, `T3_PI_RUNTIME_MODE`: the pi driver.
+- `CODEX_INTERNAL_ORIGINATOR_OVERRIDE`: the codex driver.
+- `OPENCODE_SERVER_PASSWORD` (v1), `OPENCODE_PASSWORD` (v2), `OPENCODE_CONFIG_CONTENT`: the opencode drivers.
 
-T3 accepts only a binary path for a provider. Keep this wrapper in your project (for example `scripts/t3-pi`, made executable), and set the T3 pi provider's binary path to its absolute path. Your project flake must expose `packages.<system>.jailed-pi`, and the out-link directory must be in your `.gitignore`:
+The jail still starts when `~/.t3` is absent: each missing mount is skipped. T3's MCP server listens on `127.0.0.1`, so the jail needs network access, which `commonJailOptions` grants by default.
+
+| T3 driver | jailed-agents builder | wrapper `agent` | notes |
+| --- | --- | --- | --- |
+| pi | `makeJailedPi` | `jailed-pi` | Needs the four `T3_*` variables. |
+| claudeAgent | `makeJailedClaudeCode` | `jailed-claude-code` | No T3 env. T3 passes its MCP server in the `--mcp-config` argument. |
+| codex | `makeJailedCodex` | `jailed-codex` | Set the binary path to your own codex; T3's managed mode cannot work in the jail. T3 text generation fails: T3 writes its schema and output files in the host `/tmp`, which the jail cannot see. Use another provider for T3 text generation. A custom `homePath` or `shadowHomePath` needs your own mount plus `fwdEnv = [ "CODEX_HOME" ]`. |
+| opencode | `makeJailedOpencode` or `makeJailedOpencode2` | `jailed-opencode` or `jailed-opencode2` | Needs the `OPENCODE_*` variables. T3 adds its MCP server over the opencode HTTP API. |
+| ACP local command | `makeJailedOmp`, `makeJailedGoose`, `makeJailedHermesAgent`, `makeJailedOpencode` | same name, plus `acp` on the exec line | T3's MCP tools are not available: T3's ACP bridge runs T3's own binary, which the jail cannot see. Sessions still work. |
+
+Worktrees: pi and claude start in the thread directory. codex and opencode start in T3's own directory, so the wrapper below changes to the repo. For T3 worktree threads, add `enableGitWorktrees = { enable = true; dir = "~/.t3/worktrees/<repo>"; }`. The directory must exist.
+
+T3 needs the agent as a command path. Keep this wrapper in your project (for example `scripts/t3-pi`, made executable). Set `agent` to the name of your flake package; the binary inside that package must carry the same name. Your project flake must expose `packages.<system>.$agent`, and `.direnv/` must be in your `.gitignore`:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-[[ -f flake.nix ]] || cd "$(dirname "$(realpath "$0")")/.."
-out=.direnv/t3-jailed-pi
-if [[ -z $(find "$out" -maxdepth 0 -newer flake.nix -newer flake.lock 2>/dev/null) ]]; then
-  /run/current-system/sw/bin/nix build .#jailed-pi --out-link "$out"
+agent=jailed-pi
+repo=$(realpath "$(dirname "$(realpath "$0")")/..")
+case $PWD in
+  "$repo" | "$repo"/* | "$HOME/.t3/worktrees/${repo##*/}"/*) ;;
+  *) cd "$repo" ;;
+esac
+out=$repo/.direnv/t3-$agent
+if [[ -z $(find "$out" -maxdepth 0 -newer "$repo/flake.nix" -newer "$repo/flake.lock" 2>/dev/null) ]]; then
+  /run/current-system/sw/bin/nix build "$repo#$agent" --out-link "$out"
 fi
-exec "$out/bin/jailed-pi" "$@"
+exec "$out/bin/$agent" "$@"
 ```
 
-- The `cd` line covers the T3 version probe. T3 runs `--version` with the working directory of its server, not of your project. When the wrapper finds no `flake.nix` in the current directory, it falls back to the project root that holds the script.
-- The `find` test runs `nix build` only when `flake.nix` or `flake.lock` is newer than the out-link. T3 kills the `--version` probe after 4 seconds. A fresh build does not fit in that time; the cached out-link starts at once. The script uses `nix build`, not `nix develop`, because a cached build result is fast to check.
+- For an ACP agent, put the subcommand on the exec line: `exec "$out/bin/$agent" acp "$@"`. T3 hides `commandArgs`, so it spawns the bare command only.
+- The `case` line keeps the jail on this repo or its T3 worktrees. T3 runs codex and opencode in its own directory. The wrapper changes to the repo then, so the jail never mounts another directory that T3 runs in.
+- The build uses the repo flake, so one cached build also serves the T3 worktrees of that repo.
+- The out-link is cached because T3's probe timeouts are short (pi: 4 s). A fresh build does not fit in that time; a cached out-link starts at once.
+- The `find` test rebuilds only when `flake.nix` or `flake.lock` is newer than the out-link.
 - `/run/current-system/sw/bin/nix` is an absolute path. T3 runs as an AppImage under appimage-run on NixOS. That process cannot see `/etc/profiles/per-user/*`, so a `nix` found only through `PATH` does not resolve.
+
+In the T3 settings, set the instance binary path of pi, claude, codex, and opencode to the absolute path of the script. For an ACP agent, use the "Local command" source with the script as the executable.
 
 Note: values from `env` are baked into the launcher at build time. Variables that exist only in your devShell do not reach the jail.
 
@@ -398,7 +423,7 @@ makeJailedAgent {
 - **`extraReadonlyDirs`**: A list of directories to mount with read-only access.
 - **`env`**: An attribute set of environment variables to set inside the jail (e.g. `{ EDITOR = "nvim"; }`).
 - **`fwdEnv`**: A list of environment variables to forward from the host shell into the jail (e.g. `[ "PKG_CONFIG_PATH" ]`). Set variables are forwarded; unset ones are skipped.
-- **`enableT3`**: When `true`, mounts `~/.t3/caches/pi-t3-mcp-extension.ts` and `~/.t3/userdata/attachments` read-only (each mount is skipped when the path is absent), and forwards `T3_MCP_URL`, `T3_MCP_BEARER_TOKEN`, `T3_PI_MCP_EXTENSION_PATH`, and `T3_PI_RUNTIME_MODE` from the host shell. Defaults to `false`. See [Running under T3 Code](#running-under-t3-code).
+- **`enableT3`**: When `true`, mounts `~/.t3/caches/pi-t3-mcp-extension.ts` and `~/.t3/userdata/attachments` read-only (each mount is skipped when the path is absent), and forwards the T3 driver variables from the host shell. Defaults to `false`. See [Running under T3 Code](#running-under-t3-code).
 - **`enableNix`**: When `true`, grants the agent access to the host Nix daemon: mounts `/nix` and `/etc/nix/nix.conf` read-only, the daemon socket `/nix/var/nix/daemon-socket` read-write, and adds the `nix` package.
 
   > **Warning:** `enableNix = true` lets the agent build and execute arbitrary packages from nixpkgs via the Nix daemon, bypassing the sandbox's curated toolset. Only enable it for agents you trust to run arbitrary code.
