@@ -191,6 +191,31 @@ HERDR_AGENT=pi jailed-pi        # use herdr's `pi` manifest for this pane
 
 > **Why not expose the herdr socket to the jail?** herdr's socket is a control API. It spawn panes, run commands, send keystrokes. Herdr serves with your full host privileges, and it doesn't distinguish sandboxed callers. Exposing it would let the agent open panes in directories the jail forbids, defeating the sandbox. So jailed-agents does **not** wire the socket in. The `HERDR_AGENT` hint gives you herdr's state tracking without that hole.
 
+### Running under T3 Code
+
+T3 Code can drive a jailed pi agent as its coding agent. Set `enableT3 = true` on the pi jail for this. The option mounts the driver's extension (`~/.t3/caches/pi-t3-mcp-extension.ts`) and its chat attachments (`~/.t3/userdata/attachments`) read-only. It forwards `T3_MCP_URL`, `T3_MCP_BEARER_TOKEN`, `T3_PI_MCP_EXTENSION_PATH`, and `T3_PI_RUNTIME_MODE` from the host shell. The jail still starts when `~/.t3` is absent: each launch skips the missing mounts. This serves the T3 pi driver only; other T3 drivers are not covered. The extension talks to T3's MCP server on `127.0.0.1`, so the jail needs network access, which `commonJailOptions` grants by default.
+
+Set `enableGitWorktrees = true` too. T3 threads can run in worktrees under `~/.t3/worktrees`, and git inside the jail needs the shared `.git` of those worktrees.
+
+T3 accepts only a binary path for a provider. Keep this wrapper in your project (for example `scripts/t3-pi`, made executable), and set the T3 pi provider's binary path to its absolute path. Your project flake must expose `packages.<system>.jailed-pi`, and the out-link directory must be in your `.gitignore`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+[[ -f flake.nix ]] || cd "$(dirname "$(realpath "$0")")/.."
+out=.direnv/t3-jailed-pi
+if [[ -z $(find "$out" -maxdepth 0 -newer flake.nix -newer flake.lock 2>/dev/null) ]]; then
+  /run/current-system/sw/bin/nix build .#jailed-pi --out-link "$out"
+fi
+exec "$out/bin/jailed-pi" "$@"
+```
+
+- The `cd` line covers the T3 version probe. T3 runs `--version` with the working directory of its server, not of your project. When the wrapper finds no `flake.nix` in the current directory, it falls back to the project root that holds the script.
+- The `find` test runs `nix build` only when `flake.nix` or `flake.lock` is newer than the out-link. T3 kills the `--version` probe after 4 seconds. A fresh build does not fit in that time; the cached out-link starts at once. The script uses `nix build`, not `nix develop`, because a cached build result is fast to check.
+- `/run/current-system/sw/bin/nix` is an absolute path. T3 runs as an AppImage under appimage-run on NixOS. That process cannot see `/etc/profiles/per-user/*`, so a `nix` found only through `PATH` does not resolve.
+
+Note: values from `env` are baked into the launcher at build time. Variables that exist only in your devShell do not reach the jail.
+
 ### Create a Custom Agent
 
 If an agent is not pre-configured, you can easily create a jail for it using `makeJailedAgent`.
@@ -334,6 +359,7 @@ makeJailed<AgentName> {
   fwdEnv ? [],
   enableNix ? false,
   enableGitWorktrees ? {},
+  enableT3 ? false,
   nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
@@ -356,6 +382,7 @@ makeJailedAgent {
   fwdEnv ? [],
   enableNix ? false,
   enableGitWorktrees ? {},
+  enableT3 ? false,
   nixConfigDir ? null,
   baseJailOptions ? commonJailOptions,
   basePackages ? commonPkgs
@@ -371,6 +398,7 @@ makeJailedAgent {
 - **`extraReadonlyDirs`**: A list of directories to mount with read-only access.
 - **`env`**: An attribute set of environment variables to set inside the jail (e.g. `{ EDITOR = "nvim"; }`).
 - **`fwdEnv`**: A list of environment variables to forward from the host shell into the jail (e.g. `[ "PKG_CONFIG_PATH" ]`). Set variables are forwarded; unset ones are skipped.
+- **`enableT3`**: When `true`, mounts `~/.t3/caches/pi-t3-mcp-extension.ts` and `~/.t3/userdata/attachments` read-only (each mount is skipped when the path is absent), and forwards `T3_MCP_URL`, `T3_MCP_BEARER_TOKEN`, `T3_PI_MCP_EXTENSION_PATH`, and `T3_PI_RUNTIME_MODE` from the host shell. Defaults to `false`. See [Running under T3 Code](#running-under-t3-code).
 - **`enableNix`**: When `true`, grants the agent access to the host Nix daemon: mounts `/nix` and `/etc/nix/nix.conf` read-only, the daemon socket `/nix/var/nix/daemon-socket` read-write, and adds the `nix` package.
 
   > **Warning:** `enableNix = true` lets the agent build and execute arbitrary packages from nixpkgs via the Nix daemon, bypassing the sandbox's curated toolset. Only enable it for agents you trust to run arbitrary code.
