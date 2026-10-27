@@ -208,36 +208,65 @@ The jail still starts when `~/.t3` is absent: each missing mount is skipped. T3'
 | claudeAgent | `makeJailedClaudeCode` | `jailed-claude-code` | No T3 env. T3 passes its MCP server in the `--mcp-config` argument. |
 | codex | `makeJailedCodex` | `jailed-codex` | Set the binary path to your own codex; T3's managed mode cannot work in the jail. T3 text generation fails: T3 writes its schema and output files in the host `/tmp`, which the jail cannot see. Use another provider for T3 text generation. A custom `homePath` or `shadowHomePath` needs your own mount plus `fwdEnv = [ "CODEX_HOME" ]`. |
 | opencode | `makeJailedOpencode` or `makeJailedOpencode2` | `jailed-opencode` or `jailed-opencode2` | Needs the `OPENCODE_*` variables. T3 adds its MCP server over the opencode HTTP API. |
-| ACP local command | `makeJailedOmp`, `makeJailedGoose`, `makeJailedHermesAgent`, `makeJailedOpencode` | same name, plus `acp` on the exec line | T3's MCP tools are not available: T3's ACP bridge runs T3's own binary, which the jail cannot see. Sessions still work. |
+| ACP local command | `makeJailedOmp`, `makeJailedGoose`, `makeJailedHermesAgent`, `makeJailedOpencode` | same name, plus `args = [ "acp" ]` in the hook | T3's MCP tools are not available: T3's ACP bridge runs T3's own binary, which the jail cannot see. Sessions still work. |
 
-Worktrees: pi and claude start in the thread directory. codex and opencode start in T3's own directory, so the wrapper below changes to the repo. For T3 worktree threads, add `enableGitWorktrees = { enable = true; dir = "~/.t3/worktrees/<repo>"; }`. The directory must exist.
+Worktrees: pi and claude start in the thread directory. codex and opencode start in T3's own directory, so the generated wrappers change to the repo. For T3 worktree threads, add `enableGitWorktrees = { enable = true; dir = "~/.t3/worktrees/<repo>"; }`. The directory must exist.
 
-T3 needs the agent as a command path. Keep this wrapper in your project (for example `scripts/t3-pi`, made executable). Set `agent` to the name of your flake package; the binary inside that package must carry the same name. Your project flake must expose `packages.<system>.$agent`, and `.direnv/` must be in your `.gitignore`:
+Generate the wrappers with `makeT3WrappersHook`. Put it in the `shellHook` of your devShell. The hook writes one wrapper per agent on each shell entry, so the wrappers never go stale. Each `agents` entry is a jail, or `{ agent, args, name }` when the exec line needs fixed arguments. T3 hides `commandArgs`, so ACP agents need `args = [ "acp" ]`. The default name is the jail's binary name.
 
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-agent=jailed-pi
-repo=$(realpath "$(dirname "$(realpath "$0")")/..")
-case $PWD in
-  "$repo" | "$repo"/* | "$HOME/.t3/worktrees/${repo##*/}"/*) ;;
-  *) cd "$repo" ;;
-esac
-out=$repo/.direnv/t3-$agent
-if [[ -z $(find "$out" -maxdepth 0 -newer "$repo/flake.nix" -newer "$repo/flake.lock" 2>/dev/null) ]]; then
-  /run/current-system/sw/bin/nix build "$repo#$agent" --out-link "$out"
-fi
-exec "$out/bin/$agent" "$@"
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    jailed-agents.url = "github:andersonjoseph/jailed-agents";
+  };
+
+  outputs =
+    {
+      nixpkgs,
+      jailed-agents,
+      ...
+    }:
+    let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+      jailLib = jailed-agents.lib.${system};
+    in
+    {
+      devShells.${system}.default = pkgs.mkShell {
+        shellHook = jailLib.makeT3WrappersHook {
+          agents = [
+            (jailLib.makeJailedPi { enableT3 = true; })
+            (jailLib.makeJailedPi {
+              enableT3 = true;
+              name = "jailed-pi-offline";
+              baseJailOptions = with jailLib.internals.jail.combinators; [
+                time-zone
+                no-new-session
+                mount-cwd
+              ];
+            })
+            {
+              agent = jailLib.makeJailedGoose { enableT3 = true; };
+              args = [ "acp" ];
+              name = "jailed-goose-acp";
+            }
+          ];
+        };
+      };
+    };
+}
 ```
 
-- For an ACP agent, put the subcommand on the exec line: `exec "$out/bin/$agent" acp "$@"`. T3 hides `commandArgs`, so it spawns the bare command only.
-- The `case` line keeps the jail on this repo or its T3 worktrees. T3 runs codex and opencode in its own directory. The wrapper changes to the repo then, so the jail never mounts another directory that T3 runs in.
-- The build uses the repo flake, so one cached build also serves the T3 worktrees of that repo.
-- The out-link is cached because T3's probe timeouts are short (pi: 4 s). A fresh build does not fit in that time; a cached out-link starts at once.
-- The `find` test rebuilds only when `flake.nix` or `flake.lock` is newer than the out-link.
-- `/run/current-system/sw/bin/nix` is an absolute path. T3 runs as an AppImage under appimage-run on NixOS. That process cannot see `/etc/profiles/per-user/*`, so a `nix` found only through `PATH` does not resolve.
+The example keeps two pi jails with different permissions: `jailed-pi-offline` drops network access. The goose jail serves ACP.
 
-In the T3 settings, set the instance binary path of pi, claude, codex, and opencode to the absolute path of the script. For an ACP agent, use the "Local command" source with the script as the executable.
+The wrappers appear in `<repo>/.direnv/t3/`. Set `dir` to change that path. On each shell entry the hook writes the wrappers again, removes the wrappers of agents you dropped, and leaves other files in the directory alone. Put `dir` in your `.gitignore`; `.direnv/` usually covers it already.
+
+Each wrapper adds a GC root at `<dir>/.gcroots/<name>`, so garbage collection keeps the jails. nix-direnv protects the devShell inputs on its own. With plain `nix develop`, the hook's GC roots are what keeps the jails alive.
+
+The wrappers exec the jail from its store path, so they start immediately. T3's probe timeouts are short (pi: 4 s). Only the first shell entry builds the jails.
+
+In the T3 settings, create one provider instance per wrapper. Set the binary path (pi, claude, codex, opencode) or the "Local command" executable (ACP agents) to the absolute path of the wrapper, for example `/home/me/myrepo/.direnv/t3/jailed-pi-offline`.
 
 Note: values from `env` are baked into the launcher at build time. Variables that exist only in your devShell do not reach the jail.
 
@@ -433,6 +462,20 @@ makeJailedAgent {
 - **`enableOpenUrls`**: When `true`, adds the `openUrls` permission: `xdg-utils` in the jail plus a relay that opens `http(s)://` URLs on the host. Defaults to `false`. See [Opening URLs in the Browser](#opening-urls-in-the-browser).
 - **`baseJailOptions`**: Overrides the default set of jail options.
 - **`basePackages`**: Overrides the default set of base packages.
+
+### T3 Wrapper Hook (`makeT3WrappersHook`)
+
+```nix
+makeT3WrappersHook {
+  agents,
+  dir ? ".direnv/t3"
+}
+```
+
+Returns a string to append to a devShell `shellHook`. On each shell entry it writes one wrapper per agent under `<flake root>/<dir>`, removes stale wrappers, and adds one GC root per agent. See [Running under T3 Code](#running-under-t3-code).
+
+- **`agents`**: (Required) A list of jailed agent derivations, or `{ agent, args ? [], name }` attrsets. `agent` is the jail, `args` are fixed exec arguments (e.g. `[ "acp" ]`), and `name` defaults to the jail's binary name. Duplicate names throw at eval time.
+- **`dir`**: Directory for the wrappers and their `.gcroots`, relative to the flake root. Defaults to `".direnv/t3"`. It must be gitignored.
 
 ### What's Included by Default
 
