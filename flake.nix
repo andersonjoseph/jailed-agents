@@ -85,6 +85,10 @@
             ;
         };
 
+        makeT3WrappersHook = import ./lib/t3-wrappers.nix {
+          inherit pkgs;
+        };
+
         makeJailedAgent =
           {
             name,
@@ -250,6 +254,7 @@
         lib = {
           inherit
             commonJailOptions
+            makeT3WrappersHook
             openUrls
             ;
 
