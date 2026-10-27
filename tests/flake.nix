@@ -14,6 +14,18 @@
         inherit system;
         config.allowUnfree = true;
       };
+
+      t3HookPwd = jailed-agents.lib.${system}.makeJailedAgent {
+        name = "t3-hook-pwd";
+        pkg = pkgs.writeShellScriptBin "t3-hook-pwd" "pwd";
+        configPaths = [ ];
+      };
+
+      t3HookEcho = jailed-agents.lib.${system}.makeJailedAgent {
+        name = "t3-hook-echo";
+        pkg = pkgs.writeShellScriptBin "t3-hook-echo" ''printf 'argv:%s\n' "$*"'';
+        configPaths = [ ];
+      };
     in
     {
       packages.${system} = {
@@ -130,6 +142,26 @@
           pkg = pkgs.bashInteractive;
           configPaths = [ ];
           enableT3 = true;
+        };
+
+        t3-hook-pwd = t3HookPwd;
+        t3-hook-echo = t3HookEcho;
+      };
+
+      shellHooks.${system} = {
+        t3-wrappers-hook = jailed-agents.lib.${system}.makeT3WrappersHook {
+          agents = [
+            t3HookPwd
+            {
+              agent = t3HookEcho;
+              args = [ "acp" ];
+              name = "t3-hook-echo-acp";
+            }
+          ];
+        };
+
+        t3-wrappers-hook-one = jailed-agents.lib.${system}.makeT3WrappersHook {
+          agents = [ t3HookPwd ];
         };
       };
     };

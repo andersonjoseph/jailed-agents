@@ -432,6 +432,78 @@ else
   rm -rf "$T3_EMPTY_HOME"
 fi
 
+# --- Test makeT3WrappersHook (devShell hook that writes T3 wrapper scripts) ---
+echo "----------------------------------------"
+echo "Testing makeT3WrappersHook..."
+
+T3H_ROOT="$(mktemp -d)"
+T3H_ELSEWHERE="$(mktemp -d)"
+T3H_HOME="$(mktemp -d)"
+T3H_REPO_NAME="${T3H_ROOT##*/}"
+mkdir -p "$T3H_ROOT/sub" "$T3H_HOME/.t3/worktrees/$T3H_REPO_NAME/branch"
+: > "$T3H_ROOT/flake.nix"
+
+if ! nix build --accept-flake-config ./tests#t3-hook-pwd ./tests#t3-hook-echo; then
+  echo "ERROR: Failed to build t3-hook test agents."
+  ((fail++)) || true
+fi
+
+T3H_HOOK="$(nix eval --raw --accept-flake-config ./tests#shellHooks.x86_64-linux.t3-wrappers-hook || true)"
+T3H_HOOK_ONE="$(nix eval --raw --accept-flake-config ./tests#shellHooks.x86_64-linux.t3-wrappers-hook-one || true)"
+T3H_OUT="$T3H_ROOT/.direnv/t3"
+
+# (A) sourcing the hook from a subdir writes both wrappers and their gcroots
+if (cd "$T3H_ROOT/sub" && bash -c "$T3H_HOOK" 2>/dev/null) \
+   && [ -x "$T3H_OUT/t3-hook-pwd" ] && [ -x "$T3H_OUT/t3-hook-echo-acp" ] \
+   && [ -e "$T3H_OUT/.gcroots/t3-hook-pwd" ] && [ -e "$T3H_OUT/.gcroots/t3-hook-echo-acp" ]; then
+  echo "SUCCESS: hook wrote both wrappers and gcroots from a subdir"
+  ((pass++)) || true
+else
+  echo "ERROR: hook did not write both wrappers and gcroots"
+  ((fail++)) || true
+fi
+
+# (B) cwd guard: unrelated dir -> repo, repo subdir and T3 worktree stay; exec args passed
+t3h_pwd_elsewhere="$(cd "$T3H_ELSEWHERE" && "$T3H_OUT/t3-hook-pwd" 2>/dev/null || true)"
+t3h_pwd_sub="$(cd "$T3H_ROOT/sub" && "$T3H_OUT/t3-hook-pwd" 2>/dev/null || true)"
+t3h_pwd_wt="$(cd "$T3H_HOME/.t3/worktrees/$T3H_REPO_NAME/branch" && HOME="$T3H_HOME" "$T3H_OUT/t3-hook-pwd" 2>/dev/null || true)"
+t3h_echo="$(cd "$T3H_ELSEWHERE" && "$T3H_OUT/t3-hook-echo-acp" 2>/dev/null || true)"
+if [ "$t3h_pwd_elsewhere" = "$T3H_ROOT" ] && [ "$t3h_pwd_sub" = "$T3H_ROOT/sub" ] \
+   && [ "$t3h_pwd_wt" = "$T3H_HOME/.t3/worktrees/$T3H_REPO_NAME/branch" ] \
+   && [ "$t3h_echo" = "argv:acp" ]; then
+  echo "SUCCESS: wrappers guard the cwd and pass exec args"
+  ((pass++)) || true
+else
+  echo "ERROR: wrapper cwd guard or args wrong (elsewhere='$t3h_pwd_elsewhere', sub='$t3h_pwd_sub', worktree='$t3h_pwd_wt', args='$t3h_echo')"
+  ((fail++)) || true
+fi
+
+# (C) a hook with fewer agents removes stale wrappers and gcroots, keeps other files
+touch "$T3H_OUT/unrelated.txt" "$T3H_OUT/t3-hook-gone"
+ln -s /nix/store/0000000000000000000000000000000-missing "$T3H_OUT/.gcroots/t3-hook-gone"
+if (cd "$T3H_ROOT" && bash -c "$T3H_HOOK_ONE" 2>/dev/null) \
+   && [ ! -e "$T3H_OUT/t3-hook-echo-acp" ] && [ ! -e "$T3H_OUT/.gcroots/t3-hook-echo-acp" ] \
+   && [ ! -e "$T3H_OUT/t3-hook-gone" ] && [ ! -L "$T3H_OUT/.gcroots/t3-hook-gone" ] \
+   && [ -x "$T3H_OUT/t3-hook-pwd" ] && [ -f "$T3H_OUT/unrelated.txt" ]; then
+  echo "SUCCESS: stale wrapper and gcroot removed, unrelated file kept"
+  ((pass++)) || true
+else
+  echo "ERROR: stale cleanup wrong"
+  ((fail++)) || true
+fi
+
+# (D) the hook prints nothing on stdout
+t3h_stdout="$( (cd "$T3H_ROOT/sub" && bash -c "$T3H_HOOK") 2>/dev/null || true)"
+if [ -z "$t3h_stdout" ]; then
+  echo "SUCCESS: hook printed nothing on stdout"
+  ((pass++)) || true
+else
+  echo "ERROR: hook wrote to stdout: '$t3h_stdout'"
+  ((fail++)) || true
+fi
+
+rm -rf "$T3H_ROOT" "$T3H_ELSEWHERE" "$T3H_HOME"
+
 # --- Summary ---
 echo "----------------------------------------"
 echo "Results: $pass passed, $fail failed"
