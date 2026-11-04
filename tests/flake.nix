@@ -116,6 +116,10 @@
           extraJailOptions = [ jailed-agents.lib.${system}.openUrls ];
         };
 
+        opencode2-claude-code-test = jailed-agents.lib.${system}.makeJailedOpencode2 {
+          enableClaudeCode = true;
+        };
+
         # covers the enableOpenUrls flag
         open-urls-flag-test = jailed-agents.lib.${system}.makeJailedAgent {
           name = "open-urls-flag-test";

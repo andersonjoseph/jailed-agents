@@ -281,6 +281,29 @@ else
   ((fail++)) || true
 fi
 
+# --- Test enableClaudeCode on makeJailedOpencode2 ---
+echo "----------------------------------------"
+echo "Testing enableClaudeCode..."
+
+if ! nix build --accept-flake-config --out-link result-claude "./tests#opencode2-claude-code-test" \
+  || ! nix build --accept-flake-config --out-link result-opencode2 ".#jailed-opencode2"; then
+  echo "ERROR: Failed to build enableClaudeCode test packages."
+  ((fail++)) || true
+else
+  on=$(nix-store -qR ./result-claude)
+  off=$(nix-store -qR ./result-opencode2)
+  if grep -q -- '-claude-code-' <<<"$on" \
+    && ! grep -q -- '-claude-code-' <<<"$off" \
+    && grep -- '-jailed-opencode2$' <<<"$on" | xargs grep -rqs -- '\.claude\.json'; then
+    echo "SUCCESS: enableClaudeCode adds claude-code and its config mounts"
+    ((pass++)) || true
+  else
+    echo "ERROR: enableClaudeCode did not add claude-code and its mounts as expected"
+    ((fail++)) || true
+  fi
+fi
+rm -f result-claude result-opencode2
+
 # --- Test git worktree support (enableGitWorktrees) ---
 echo "----------------------------------------"
 echo "Testing enableGitWorktrees..."
