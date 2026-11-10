@@ -24,7 +24,7 @@ mkdir -p \
   ~/.config/crush ~/.local/share/crush \
   ~/.config/goose ~/.local/share/goose ~/.local/state/goose \
   ~/.opencode \
-  ~/.config/opencode ~/.local/share/opencode ~/.local/state/opencode \
+  ~/.config/opencode ~/.local/share/opencode ~/.local/state/opencode ~/.cache/opencode \
   ~/.hermes ~/.claude ~/.codex ~/.pi ~/.omp
 touch ~/.claude.json
 
@@ -303,6 +303,28 @@ else
   fi
 fi
 rm -f result-claude result-opencode2
+
+# --- Test that both opencode builders mount the plugin cache ---
+echo "----------------------------------------"
+echo "Testing opencode plugin cache mount..."
+
+if ! nix build --accept-flake-config --out-link result-opencode ".#jailed-opencode" \
+  || ! nix build --accept-flake-config --out-link result-opencode2 ".#jailed-opencode2"; then
+  echo "ERROR: Failed to build opencode plugin cache test packages."
+  ((fail++)) || true
+else
+  oc=$(nix-store -qR ./result-opencode)
+  oc2=$(nix-store -qR ./result-opencode2)
+  if grep -- '-jailed-opencode$' <<<"$oc" | xargs grep -rqs -- '\.cache/opencode' \
+    && grep -- '-jailed-opencode2$' <<<"$oc2" | xargs grep -rqs -- '\.cache/opencode'; then
+    echo "SUCCESS: both opencode builders mount ~/.cache/opencode"
+    ((pass++)) || true
+  else
+    echo "ERROR: opencode builder missing .cache/opencode mount"
+    ((fail++)) || true
+  fi
+fi
+rm -f result-opencode result-opencode2
 
 # --- Test git worktree support (enableGitWorktrees) ---
 echo "----------------------------------------"

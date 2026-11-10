@@ -14,6 +14,7 @@ let
       "~/.config/opencode"
       "~/.local/share/opencode"
       "~/.local/state/opencode"
+      "~/.cache/opencode"
     ];
   };
 in
