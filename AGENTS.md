@@ -40,6 +40,12 @@ nix develop
 ```
 Enter dev shell with nixd, nixfmt, statix, and jailed agents.
 
+## Documentation
+
+User documentation lives in `README.md` and the GitHub wiki (the wiki is its own repo, usually cloned at `../jailed-agents.wiki`). `llms.txt` at the repo root holds the full documentation as one file for LLM consumers: a short header, then every wiki page in sidebar order (`Home`, `Getting-Started`, `Customization`, `Git-Worktrees`, `Integrations`, `Examples`, `API-Reference`). Wiki links (`[[Page]]`, `[[Page|Label]]`) are written as absolute `https://github.com/andersonjoseph/jailed-agents/wiki/Page` links.
+
+When you change `README.md` or any wiki page, update `llms.txt` in the same change.
+
 ## Code Style Guidelines
 
 ### Nix Formatting

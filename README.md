@@ -61,6 +61,8 @@ The full documentation lives in the [wiki](https://github.com/andersonjoseph/jai
 - [Examples](https://github.com/andersonjoseph/jailed-agents/wiki/Examples) — a Go development environment
 - [API Reference](https://github.com/andersonjoseph/jailed-agents/wiki/API-Reference) — all builders, options, and defaults
 
+Full documentation as one file for LLMs: [llms.txt](llms.txt).
+
 ## Contributing
 
 Contributions are welcome! Please feel free to open a pull request for:
