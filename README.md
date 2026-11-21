@@ -2,16 +2,12 @@
 
 Secure Nix sandbox for LLM agents. Run AI coding agents in isolated environments with controlled access.
 
-## What is it?
-
-`jailed-agents` provides a secure sandbox for running LLM coding agents using Nix and `jail.nix` (which is built on `bubblewrap`). It gives your AI agents the autonomy to be useful without giving them full access to your system.
-
-> **Linux only.** The sandbox is built on [`bubblewrap`](https://github.com/containers/bubblewrap), which depends on Linux namespaces (user, pid, net, …) and bind mounts. These have no equivalent on macOS/Darwin, so `jailed-agents` is **not compatible with Nix on macOS** and currently supports Linux only.
+> **Linux only.** The sandbox is built on [`bubblewrap`](https://github.com/containers/bubblewrap), which depends on Linux namespaces and bind mounts. There is no equivalent on macOS. `jailed-agents` supports Linux only.
 
 ## Features
 
 - **Zero-Trust Sandbox**: By default, agents have no access to your home directory, SSH keys, or other sensitive files.
-- **Sensible Defaults**: Comes with a curated set of 14 common packages and secure jail options enabled out-of-the-box.
+- **Sensible Defaults**: A curated set of 14 common packages and secure jail options comes enabled out-of-the-box.
 - **Composable**: Reuse common configurations to create custom, sandboxed environments for your agents.
 - **Pre-configured Agents**: Ready-to-use jails for popular agents like `crush`, `opencode`, and `pi`.
 - **Custom Agent Builder**: Easily create secure jails for any agent with the `makeJailedAgent` function.
@@ -28,56 +24,17 @@ inputs.jailed-agents.url = "github:andersonjoseph/jailed-agents";
 
 ## Quick Start
 
-You can use `jailed-agents` in two ways:
-
-### Option 1: Run Pre-built Packages Directly
-
-Build and run a pre-configured agent in one command:
+Build and run a pre-configured agent with one command:
 
 ```bash
 nix run github:andersonjoseph/jailed-agents#jailed-opencode
 ```
 
-Or add `jailed-agents` as an input and run:
+For a custom devShell setup, see [Getting Started](https://github.com/andersonjoseph/jailed-agents/wiki/Getting-Started) in the wiki.
 
-```bash
-nix run .#jailed-opencode
-```
-
-### Option 2: Customize with Lib Functions
-
-Add a customized agent to your `devShell`:
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    jailed-agents.url = "github:andersonjoseph/jailed-agents";
-  };
-
-  outputs = { nixpkgs, jailed-agents, ... }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
-    in {
-      devShells.${system}.default = pkgs.mkShell {
-        packages = [
-          (jailed-agents.lib.${system}.makeJailedOpencode {
-            extraPkgs = [ pkgs.nodejs pkgs.python3 ];
-          })
-        ];
-      };
-    };
-}
-```
-
-Run `nix develop`, and the `jailed-opencode` command will be available in your shell.
-
-> **Note on Security:** The `jailed-` prefix (e.g., `jailed-crush`) makes it clear that you are running a sandboxed version of the agent. If the agent attempts to access a file outside of its approved directories, you will see a "Permission denied" error. This is the sandbox correctly enforcing its security boundaries, not a bug.
+> **Note on Security:** The `jailed-` prefix (e.g. `jailed-crush`) makes it clear that you are running a sandboxed version of the agent. If the agent attempts to access a file outside of its approved directories, you will see a "Permission denied" error. This is the sandbox correctly enforcing its security boundaries, not a bug.
 
 ## Available Agents
-
-`jailed-agents` provides pre-configured builders for the following agents:
 
 | Agent        | Builder Function       | Default Command     |
 | ------------ | ---------------------- | ------------------- |
@@ -93,312 +50,16 @@ Run `nix develop`, and the `jailed-opencode` command will be available in your s
 
 These builders come with sensible defaults and include the necessary config paths for the agent to function correctly out of the box.
 
-## Customization
-
-You can customize agents by overriding the default options.
-
-### Use a Custom Package or Name
-
-Override the agent's package or change the command name.
-
-```nix
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  name = "secure-opencode";
-  pkg = pkgs.opencode_2_0;
-})
-```
-
-### Add Extra Packages
-
-Include additional packages in the sandbox environment.
-
-```nix
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  extraPkgs = [ pkgs.nodejs pkgs.python3 ];
-})
-```
-
-### Mount Additional Directories
-
-Provide read-write or read-only access to directories.
-
-```nix
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  extraReadwriteDirs = ["~/projects"];
-  extraReadonlyDirs = ["~/readonly-cache"];
-})
-```
-
-Some agents read from directories beyond their defaults. For example, Goose also uses `~/.agents` for global hints (`AGENTS.md`) and its installed-agents/plugins features — mount it if you rely on those:
-
-```nix
-(jailed-agents.lib.${system}.makeJailedGoose {
-  extraReadwriteDirs = [ "~/.agents" ];
-})
-```
-
-### Set Environment Variables
-
-Set environment variables inside the jail.
-
-```nix
-(jailed-agents.lib.${system}.makeJailedPi {
-  env = {
-    EDITOR = "${pkgs.neovim}/bin/nvim";
-    VISUAL = "${pkgs.neovim}/bin/nvim";
-  };
-})
-```
-
-### Forward Environment Variables
-
-Set environment variables inside the jail by copying them from the outside.
-```nix
-(jailed-agents.lib.${system}.makeJailedPi {
-  fwdEnv = [ "PKG_CONFIG_PATH" ];
-})
-```
-
-Take care to not forward any secrets. Variables that are unset in the host shell are skipped.
-
-### Opening URLs in the Browser
-
-`opencode` (and other CLIs with login flows) open URLs by spawning `xdg-open`. That fails inside a sandbox: there is no browser there, and no desktop session to launch one. The `openUrls` jail option fixes this by relaying URL opens to the host through a pipe:
-
-```
-browserchannel (in jail, set as $BROWSER) → FIFO → host handler → $BROWSER or xdg-open
-```
-
-Only `http://` and `https://` URLs are relayed; anything else is dropped. No agent enables this by default, since it lets the jailed program ask your host to open URLs. To opt in:
-
-```nix
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  enableOpenUrls = true;
-})
-```
-
-The same permission is also available directly as `jailed-agents.lib.${system}.openUrls`, for composing into `extraJailOptions` alongside other jail permissions. The permission bundles `xdg-utils` itself, so nothing else is needed at the call site. One caveat: the jailed caller blocks until the host handler returns, and if your browser inherits and holds the relayed stdout open, that call can hang — retry, or open the printed URL manually.
-
-### Running under herdr
-
-[herdr](https://herdr.dev) detects jailed agents and shows their working/idle/blocked state in its sidebar with **no jail changes** — it reads the pane's screen from the host. Because the sandbox hides the real foreground process, give herdr a hint so it applies the right screen manifest:
-
-```bash
-HERDR_AGENT=pi jailed-pi        # use herdr's `pi` manifest for this pane
-```
-
-`HERDR_AGENT` is a host-side env var on the wrapper command (one of herdr's known agents: `pi`, `claude`, `codex`, etc), not something configured inside the jail. If herdr still can't see the agent process (some `bubblewrap` setups don't expose a terminal foreground process group), start the herdr server with `HERDR_PROCESS_DETECTION=child-groups`.
-
-> **Why not expose the herdr socket to the jail?** herdr's socket is a control API. It spawn panes, run commands, send keystrokes. Herdr serves with your full host privileges, and it doesn't distinguish sandboxed callers. Exposing it would let the agent open panes in directories the jail forbids, defeating the sandbox. So jailed-agents does **not** wire the socket in. The `HERDR_AGENT` hint gives you herdr's state tracking without that hole.
-
-### Create a Custom Agent
-
-If an agent is not pre-configured, you can easily create a jail for it using `makeJailedAgent`.
-
-```nix
-(jailed-agents.lib.${system}.makeJailedAgent {
-  name = "my-custom-agent";
-  pkg = pkgs.my-agent-package;
-  configPaths = [
-    "~/.config/my-agent"
-    "~/.local/share/my-agent"
-  ];
-  extraPkgs = [
-    pkgs.pandoc
-    pkgs.ffmpeg
-  ];
-})
-```
-
-> **Tip:** Prefer using the pre-configured builders (`makeJailedCrush`, `makeJailedOpencode`, `makeJailedPi`) when possible, as they provide simpler APIs and sensible defaults. Use `makeJailedAgent` only for unsupported agents or for full control.
-
-### Advanced Customization
-
-For ultimate control, you can use the `internals` API to access the underlying `jail.nix` combinators. This allows you to modify base jail options, such as disabling network access.
-
-```nix
-let
-  jail = jailed-agents.lib.${system}.internals.jail;
-  combinators = jail.combinators;
-in
-{
-  # Example: Disable network access for opencode
-  packages.x86_64-linux.opencode-no-net = jailed-agents.lib.${system}.makeJailedOpencode {
-    baseJailOptions = [
-      combinators.time-zone
-      combinators.no-new-session
-      combinators.mount-cwd
-    ];
-  };
-}
-```
-
-For a complete reference on available combinators, see the [jail.nix combinators documentation](https://alexdav.id/projects/jail-nix/combinators/).
-
-### Git Worktrees
-
-A git [worktree](https://git-scm.com/docs/git-worktree) keeps its `.git` directory in the **main repository**, separate from the worktree's working directory. The jail only mounts the directory you launch the agent from (`$PWD`), so launching an agent from inside a worktree breaks git: every command fails with `fatal: not a git repository`.
-
-`enableGitWorktrees` fixes this. When the agent is launched from inside a worktree, it automatically detects and mounts the shared `.git` directory read-write so that `status`, `log`, `commit`, etc. work as expected.
-
-```nix
-# Work inside an existing worktree (most common):
-(jailed-agents.lib.${system}.makeJailedOpencode {
-  enableGitWorktrees = true;
-})
-```
-
-The option is an attribute set:
-
-| Field | Default | Purpose |
-| --- | --- | --- |
-| `enable` | `false` | Turn on the shared `.git` auto-mount. (Passing `enableGitWorktrees = true` is shorthand for `{ enable = true; }`.) |
-| `dir` | `null` | Directory (read-write) where the agent may **create** new worktrees, e.g. via `git worktree add`. This is just sugar for `extraReadwriteDirs = [ dir ]`; the directory must already exist on the host. |
-| `mountGitConfig` | `false` | Mount `~/.gitconfig` read-only so the agent inherits your global `user.name` / `user.email`. Uses a tolerant bind: a missing `~/.gitconfig` is skipped rather than aborting launch (unlike `extraReadonlyDirs`, which would hard-fail). |
-
-```nix
-# Full example: work inside worktrees AND create new ones, with global identity.
-(jailed-agents.lib.${system}.makeJailedCrush {
-  enableGitWorktrees = {
-    enable = true;
-    dir = "~/projects/myrepo-worktrees";
-    mountGitConfig = true;
-  };
-})
-```
-
-> **Identity:** the jail's home is an ephemeral tmpfs, so `~/.gitconfig` is not visible by default. Without `mountGitConfig`, set identity in the repo's own config (`git -C <repo> config user.email …`) — it lives in `.git/config` and travels with the shared `.git` mount automatically.
-
-> **Safety:** the resolver binds the shared `.git` only when `$PWD` is a genuine git worktree — it verifies that `$PWD/.git` is a gitdir file whose target resolves *inside* the shared `.git` directory. A plain directory, or a crafted `.git` pointer at some other repository, is never bound, so this feature cannot be used to reach an unrelated repo's `.git`. Because the check is structural rather than path-based, it works for repositories kept anywhere, including outside `$HOME`.
-
-## Go Development Example
-
-Here is an example of how to set up a Go development environment with a jailed `crush` agent that has access to the Go toolchain.
-
-```nix
-{
-  description = "Go development environment";
-
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    jailed-agents.url = "github:andersonjoseph/jailed-agents";
-  };
-
-  outputs = { nixpkgs, jailed-agents }:
-    let
-      system = "x86_64-linux";
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
-    in {
-      devShells.${system}.default = pkgs.mkShell {
-        hardeningDisable = [ "fortify" ];
-        packages = with pkgs; [
-          go
-          gopls
-          golangci-lint
-          go-task
-
-          # Provide the Go toolchain to the jailed agent
-          (jailed-agents.lib.${system}.makeJailedCrush {
-            extraPkgs = [
-              go
-              gopls
-              golangci-lint
-              go-task
-              libgcc
-              gcc
-            ];
-          })
-        ];
-      };
-    };
-}
-```
-
-## API Reference
-
-### Pre-configured Builders (`makeJailed<AgentName>`)
-
-```nix
-makeJailed<AgentName> {
-  name ? "jailed-<agent-name>",
-  pkg ? /* default package from llm-agents.nix */,
-  extraPkgs ? [],
-  extraJailOptions ? [],
-  enableOpenUrls ? false,
-  extraReadwriteDirs ? [],
-  extraReadonlyDirs ? [],
-  env ? {},
-  fwdEnv ? [],
-  enableNix ? false,
-  enableGitWorktrees ? {},
-  nixConfigDir ? null,
-  baseJailOptions ? commonJailOptions,
-  basePackages ? commonPkgs
-}
-```
-
-### Custom Agent Builder (`makeJailedAgent`)
-
-```nix
-makeJailedAgent {
-  name,
-  pkg,
-  configPaths,
-  extraPkgs ? [],
-  extraJailOptions ? [],
-  enableOpenUrls ? false,
-  extraReadwriteDirs ? [],
-  extraReadonlyDirs ? [],
-  env ? {},
-  fwdEnv ? [],
-  enableNix ? false,
-  enableGitWorktrees ? {},
-  nixConfigDir ? null,
-  baseJailOptions ? commonJailOptions,
-  basePackages ? commonPkgs
-}
-```
-
-- **`name`**: (Required) The command name for the jailed agent.
-- **`pkg`**: (Required) The agent package to sandbox.
-- **`configPaths`**: (Required for `makeJailedAgent`) A list of essential configuration paths the agent needs read-write access to (e.g., `["~/.config/my-agent"]`).
-- **`extraPkgs`**: A list of additional packages to include in the sandbox.
-- **`extraJailOptions`**: A list of extra jail permissions appended to `baseJailOptions` (e.g. `[ openUrls ]`). Pre-configured builders merge this on top of their own defaults.
-- **`extraReadwriteDirs`**: A list of directories to mount with read-write access.
-- **`extraReadonlyDirs`**: A list of directories to mount with read-only access.
-- **`env`**: An attribute set of environment variables to set inside the jail (e.g. `{ EDITOR = "nvim"; }`).
-- **`fwdEnv`**: A list of environment variables to forward from the host shell into the jail (e.g. `[ "PKG_CONFIG_PATH" ]`). Set variables are forwarded; unset ones are skipped.
-- **`enableNix`**: When `true`, grants the agent access to the host Nix daemon: mounts `/nix` and `/etc/nix/nix.conf` read-only, the daemon socket `/nix/var/nix/daemon-socket` read-write, and adds the `nix` package.
-
-  > **Warning:** `enableNix = true` lets the agent build and execute arbitrary packages from nixpkgs via the Nix daemon, bypassing the sandbox's curated toolset. Only enable it for agents you trust to run arbitrary code.
-
-- **`nixConfigDir`**: Mounts a NixOS/system config directory into the jail so the agent can read (or edit) the declaration. Pass a path string to mount it read-only (e.g. `"/etc/nixos"`), or `{ path = "/etc/nixos"; writable = true; }` to mount it read-write. Defaults to `null` (nothing mounted). Independent of `enableNix`.
-- **`enableGitWorktrees`**: Mounts the shared `.git` directory when the agent is launched from inside a git worktree, so git commands work. `{ enable = true; }` is enough to work inside an existing worktree; `dir` lets the agent create new worktrees there (sugar for `extraReadwriteDirs`), and `mountGitConfig = true` mounts `~/.gitconfig` read-only, tolerating its absence. Defaults to `{ }`. See [Git Worktrees](#git-worktrees).
-- **`enableOpenUrls`**: When `true`, adds the `openUrls` permission: `xdg-utils` in the jail plus a relay that opens `http(s)://` URLs on the host. Defaults to `false`. See [Opening URLs in the Browser](#opening-urls-in-the-browser).
-- **`baseJailOptions`**: Overrides the default set of jail options.
-- **`basePackages`**: Overrides the default set of base packages.
-
-### What's Included by Default
-
-- **Common Packages**: All agents include `bash`, `curl`, `wget`, `jq`, `git`, `ripgrep`, `gnugrep`, `gawk`, `ps`, `findutils`, `gzip`, `unzip`, `gnutar`, and `diffutils`.
-- **Common Jail Options**: All jails include network access, system timezone propagation, prevention of new session creation, and mounting of the current working directory.
-- **opencode extras**: `jailed-opencode` additionally includes `xdg-utils`. `opencode web` serves its web interface either way, but it also tries to open the URL in a browser, and without `xdg-open` present that attempt dumps a not-found stack trace. Auto-opening is opt-in via `enableOpenUrls = true`.
-- **opencode2 extras**: `jailed-opencode2` also includes `xdg-utils`. `makeJailedOpencode2` accepts `enableClaudeCode ? false`; when `true`, it adds the `claude-code` package and mounts `~/.claude` and `~/.claude.json` read-write, so opencode2 can run Claude agents through the Claude Code harness.
-
-  > **Warning:** `~/.claude` and `~/.claude.json` hold your Claude login credentials. With `enableClaudeCode = true`, the agent can read and change them.
-
-- **omp extras**: `jailed-omp` additionally includes `chromium`, plus `dejavu_fonts` and a generated fontconfig config (`FONTCONFIG_FILE`) so browser renders have usable fonts inside the tmpfs jail. omp prefers a system Chromium over its managed download (which cannot execute on NixOS), and its browser tool launches it with `--no-sandbox` inside the jail — bubblewrap remains the security boundary.
-
-## Why Not Docker?
-
-Docker is a heavy solution for this use case and would require you to duplicate your Nix environment inside a Dockerfile. `jailed-agents` is built on technologies that integrate seamlessly with a Nix-based workflow:
-
-- **`bubblewrap`**: The same lightweight sandboxing technology used by Flatpak.
-- **`jail.nix`**: A declarative, Nix-native library for building `bubblewrap` sandboxes.
-- **Nix Flakes**: Integrates directly into your existing development environment without extra overhead.
+## Documentation
+
+The full documentation lives in the [wiki](https://github.com/andersonjoseph/jailed-agents/wiki):
+
+- [Getting Started](https://github.com/andersonjoseph/jailed-agents/wiki/Getting-Started) — install and first run
+- [Customization](https://github.com/andersonjoseph/jailed-agents/wiki/Customization) — packages, names, mounts, and environment
+- [Git Worktrees](https://github.com/andersonjoseph/jailed-agents/wiki/Git-Worktrees) — run the agent inside git worktrees
+- [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations) — open URLs on the host, herdr, Nix access
+- [Examples](https://github.com/andersonjoseph/jailed-agents/wiki/Examples) — a Go development environment
+- [API Reference](https://github.com/andersonjoseph/jailed-agents/wiki/API-Reference) — all builders, options, and defaults
 
 ## Contributing
 
