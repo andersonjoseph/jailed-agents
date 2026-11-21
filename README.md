@@ -1,5 +1,7 @@
 # jailed-agents
 
+<a href="https://trendshift.io/repositories/133111" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/133111/daily?language=Nix" alt="andersonjoseph/jailed-agents | Trendshift" width="250" height="55"/></a>
+
 Secure Nix sandbox for LLM agents. Run AI coding agents in isolated environments with controlled access.
 
 > **Linux only.** The sandbox is built on [`bubblewrap`](https://github.com/containers/bubblewrap), which depends on Linux namespaces and bind mounts. There is no equivalent on macOS. `jailed-agents` supports Linux only.
