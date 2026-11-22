@@ -83,6 +83,7 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
+            enableBrowse ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -125,8 +126,12 @@
               ++ pkgs.lib.optional (
                 resolvedNixConfigDir != null && resolvedNixConfigDir.writable
               ) resolvedNixConfigDir.path
+              ++ pkgs.lib.optionals enableBrowse [
+                "~/.local/share/browse"
+                "~/.local/state/browse"
+              ]
               ++ gitWorktrees.readwriteDirs;
-            extraPackages = extraPkgs ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs;
+            extraPackages = extraPkgs ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs ++ pkgs.lib.optionals enableBrowse [ browse-pkg ];
 
             guardedJail =
               pkg':
@@ -192,6 +197,7 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
+            enableBrowse ? false,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -204,6 +210,7 @@
               name
               pkg
               enableOpenUrls
+              enableBrowse
               extraReadwriteDirs
               extraReadonlyDirs
               enableNix

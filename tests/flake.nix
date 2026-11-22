@@ -127,6 +127,14 @@
           configPaths = [ ];
           enableOpenUrls = true;
         };
+
+        # covers the enableBrowse flag
+        browse-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "browse-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          enableBrowse = true;
+        };
       };
     };
 }
