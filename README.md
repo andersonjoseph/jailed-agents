@@ -15,6 +15,7 @@ Secure Nix sandbox for LLM agents. Run AI coding agents in isolated environments
 - **Custom Agent Builder**: Easily create secure jails for any agent with the `makeJailedAgent` function.
 - **Declarative Tooling**: Explicitly define which commands, packages, and directories the agent can access.
 - **Seamless Nix Integration**: Works perfectly with your existing Nix Flakes setup.
+- **Optional Browser Access**: `enableBrowse = true` lets agents use your real browser through [browse](https://opencode.ai/product/browse).
 
 ## Installation
 
@@ -59,7 +60,7 @@ The full documentation lives in the [wiki](https://github.com/andersonjoseph/jai
 - [Getting Started](https://github.com/andersonjoseph/jailed-agents/wiki/Getting-Started) — install and first run
 - [Customization](https://github.com/andersonjoseph/jailed-agents/wiki/Customization) — packages, names, mounts, and environment
 - [Git Worktrees](https://github.com/andersonjoseph/jailed-agents/wiki/Git-Worktrees) — run the agent inside git worktrees
-- [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations) — open URLs on the host, herdr, Nix access
+- [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations) — open URLs on the host, browse in your real browser, herdr, Nix access
 - [Examples](https://github.com/andersonjoseph/jailed-agents/wiki/Examples) — a Go development environment
 - [API Reference](https://github.com/andersonjoseph/jailed-agents/wiki/API-Reference) — all builders, options, and defaults
 
