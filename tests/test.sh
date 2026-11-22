@@ -308,6 +308,24 @@ else
   fi
 fi
 
+# --- Test browsePkg override (custom package lands in the jail) ---
+echo "----------------------------------------"
+echo "Testing browsePkg override..."
+
+if ! nix build --accept-flake-config "./tests#browse-override-test"; then
+  echo "ERROR: Failed to build browse-override-test."
+  ((fail++)) || true
+else
+  out=$(./result/bin/browse-override-test -c 'browse --version') || true
+  if [ "$out" = "custom-browse" ]; then
+    echo "SUCCESS: browsePkg override replaces the binary in the jail"
+    ((pass++)) || true
+  else
+    echo "ERROR: override not in effect, got '$out'"
+    ((fail++)) || true
+  fi
+fi
+
 # --- Preconfigured builders must accept extraJailOptions (README example) ---
 echo "----------------------------------------"
 echo "Testing extraJailOptions on preconfigured builder..."
