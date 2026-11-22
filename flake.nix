@@ -68,6 +68,8 @@
             ;
         };
 
+        browse-pkg = pkgs.callPackage ./packages/browse.nix { };
+
         makeJailedAgent =
           {
             name,
@@ -251,6 +253,7 @@
         };
 
         packages = {
+          browse = browse-pkg;
           jailed-claude-code = agents.makeJailedClaudeCode { };
           jailed-codex = agents.makeJailedCodex { };
           jailed-crush = agents.makeJailedCrush { };
