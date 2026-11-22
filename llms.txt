@@ -344,7 +344,11 @@ It adds the `browse` CLI to the jail and mounts `~/.local/share/browse` and `~/.
 
 Two one-time steps on the host: pair the extension (`browse pair` prints a code to enter in the extension's options), and add the MCP server to the agent's own config — for opencode, `"command": ["browse", "mcp"]` in `~/.config/opencode/opencode.jsonc`.
 
-The same package is exported as `packages.${system}.browse`, so the host can run `browse` admin commands (`pair`, `status`) without a second definition. Version bumps for both sides happen in jailed-agents.
+The same package is exported as `packages.${system}.browse`, so the host can run `browse` admin commands (`pair`, `status`) without a second definition. Version bumps for both sides happen in jailed-agents:
+
+```bash
+nix run nixpkgs#nix-update -- -F browse --version "$(curl -s https://registry.npmjs.org/@opencode%2fbrowse-linux-x64 | jq -r '."dist-tags".latest')"
+```
 
 > **Warning:** one relay serves the machine, and its token sits inside every jail that enables this. Any such agent can drive the same paired browser: read pages, use your logins. `allowedOrigins` limits a tab to named sites; the jail boundary stays per-agent, the browse boundary is per-machine. Enable this only for agents you trust with your browser.
 
