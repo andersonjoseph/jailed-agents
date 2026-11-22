@@ -350,6 +350,8 @@ The same package is exported as `packages.${system}.browse`, so the host can run
 nix run nixpkgs#nix-update -- -F browse --version "$(curl -s https://registry.npmjs.org/@opencode%2fbrowse-linux-x64 | jq -r '."dist-tags".latest')"
 ```
 
+Your own browse build works too: `enableBrowse = true; browsePkg = myBrowse;` replaces the vendored binary.
+
 > **Warning:** one relay serves the machine, and its token sits inside every jail that enables this. Any such agent can drive the same paired browser: read pages, use your logins. `allowedOrigins` limits a tab to named sites; the jail boundary stays per-agent, the browse boundary is per-machine. Enable this only for agents you trust with your browser.
 
 ## Run under herdr
@@ -461,6 +463,7 @@ makeJailed<AgentName> {
   extraJailOptions ? [],
   enableOpenUrls ? false,
   enableBrowse ? false,
+  browsePkg ? browse-pkg,
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
@@ -484,6 +487,7 @@ makeJailedAgent {
   extraJailOptions ? [],
   enableOpenUrls ? false,
   enableBrowse ? false,
+  browsePkg ? browse-pkg,
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
@@ -515,6 +519,7 @@ makeJailedAgent {
 - **`enableGitWorktrees`**: Mounts the shared `.git` directory when the agent is launched from inside a git worktree, so git commands work. `{ enable = true; }` is enough to work inside an existing worktree; `dir` lets the agent create new worktrees there (sugar for `extraReadwriteDirs`), and `mountGitConfig = true` mounts `~/.gitconfig` read-only, tolerating its absence. Defaults to `{ }`. See [Git Worktrees](https://github.com/andersonjoseph/jailed-agents/wiki/Git-Worktrees).
 - **`enableOpenUrls`**: When `true`, adds the `openUrls` permission: `xdg-utils` in the jail plus a relay that opens `http(s)://` URLs on the host. Defaults to `false`. See [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations).
 - **`enableBrowse`**: When `true`, adds the `browse` CLI and mounts `~/.local/share/browse` and `~/.local/state/browse` read-write, so the agent can run the browse MCP server against your real browser. Defaults to `false`. See [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations).
+- **`browsePkg`**: The package `enableBrowse` adds. Defaults to the vendored `browse` package from `packages.${system}.browse`; pass your own build to override it. No effect unless `enableBrowse` is `true`.
 - **`baseJailOptions`**: Overrides the default set of jail options.
 - **`basePackages`**: Overrides the default set of base packages.
 
