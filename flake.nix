@@ -132,7 +132,10 @@
                 "~/.local/state/browse"
               ]
               ++ gitWorktrees.readwriteDirs;
-            extraPackages = extraPkgs ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs ++ pkgs.lib.optionals enableBrowse [ browsePkg ];
+            extraPackages =
+              extraPkgs
+              ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs
+              ++ pkgs.lib.optionals enableBrowse [ browsePkg ];
 
             guardedJail =
               pkg':
