@@ -25,7 +25,8 @@ mkdir -p \
   ~/.config/goose ~/.local/share/goose ~/.local/state/goose \
   ~/.opencode \
   ~/.config/opencode ~/.local/share/opencode ~/.local/state/opencode ~/.cache/opencode \
-  ~/.hermes ~/.claude ~/.codex ~/.pi ~/.omp
+  ~/.hermes ~/.claude ~/.codex ~/.pi ~/.omp \
+  ~/.local/share/browse ~/.local/state/browse
 touch ~/.claude.json
 
 # --- Build and smoke-test each agent ---
@@ -266,6 +267,62 @@ else
       echo "ERROR: expected 'https://flag.example.com', got '$out'"
       ((fail++)) || true
     fi
+  fi
+fi
+
+# --- Test enableBrowse (binary, state mounts, relay reachability) ---
+echo "----------------------------------------"
+echo "Testing enableBrowse..."
+
+if ! nix build --accept-flake-config "./tests#browse-test"; then
+  echo "ERROR: Failed to build browse-test."
+  ((fail++)) || true
+else
+  out=$(./result/bin/browse-test -c 'browse --version') || true
+  if printf '%s' "$out" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+    echo "SUCCESS: browse binary runs inside the jail"
+    ((pass++)) || true
+  else
+    echo "ERROR: browse did not run in jail, got '$out'"
+    ((fail++)) || true
+  fi
+
+  echo "sentinel" > ~/.local/share/browse/jail-test-sentinel
+  out=$(./result/bin/browse-test -c 'cat ~/.local/share/browse/jail-test-sentinel' 2>/dev/null || true)
+  if [ "$out" = "sentinel" ]; then
+    echo "SUCCESS: browse state dir is mounted in the jail"
+    ((pass++)) || true
+  else
+    echo "ERROR: browse state dir not readable in jail, got '$out'"
+    ((fail++)) || true
+  fi
+  rm -f ~/.local/share/browse/jail-test-sentinel
+
+  out=$(./result/bin/browse-test -c 'browse status' 2>/dev/null || true)
+  if printf '%s' "$out" | grep -q 'Relay:.*running'; then
+    echo "SUCCESS: browse reaches the relay from inside the jail"
+    ((pass++)) || true
+  else
+    echo "ERROR: browse status failed in jail: $out"
+    ((fail++)) || true
+  fi
+fi
+
+# --- Test browsePkg override (custom package lands in the jail) ---
+echo "----------------------------------------"
+echo "Testing browsePkg override..."
+
+if ! nix build --accept-flake-config "./tests#browse-override-test"; then
+  echo "ERROR: Failed to build browse-override-test."
+  ((fail++)) || true
+else
+  out=$(./result/bin/browse-override-test -c 'browse --version') || true
+  if [ "$out" = "custom-browse" ]; then
+    echo "SUCCESS: browsePkg override replaces the binary in the jail"
+    ((pass++)) || true
+  else
+    echo "ERROR: override not in effect, got '$out'"
+    ((fail++)) || true
   fi
 fi
 

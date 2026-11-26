@@ -127,6 +127,21 @@
           configPaths = [ ];
           enableOpenUrls = true;
         };
+
+        browse-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "browse-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          enableBrowse = true;
+        };
+
+        browse-override-test = jailed-agents.lib.${system}.makeJailedAgent {
+          name = "browse-override-test";
+          pkg = pkgs.bashInteractive;
+          configPaths = [ ];
+          enableBrowse = true;
+          browsePkg = pkgs.writeShellScriptBin "browse" "echo custom-browse";
+        };
       };
     };
 }

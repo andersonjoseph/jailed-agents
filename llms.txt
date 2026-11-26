@@ -8,7 +8,7 @@ Full documentation for LLMs, in one file. Sources (raw markdown):
 - [Getting Started](https://raw.githubusercontent.com/wiki/andersonjoseph/jailed-agents/Getting-Started.md): install and first run
 - [Customization](https://raw.githubusercontent.com/wiki/andersonjoseph/jailed-agents/Customization.md): packages, names, mounts, and environment
 - [Git Worktrees](https://raw.githubusercontent.com/wiki/andersonjoseph/jailed-agents/Git-Worktrees.md): run the agent inside git worktrees
-- [Integrations](https://raw.githubusercontent.com/wiki/andersonjoseph/jailed-agents/Integrations.md): open URLs on the host, herdr, Nix access
+- [Integrations](https://raw.githubusercontent.com/wiki/andersonjoseph/jailed-agents/Integrations.md): open URLs on the host, browse in your real browser, herdr, Nix access
 - [Examples](https://raw.githubusercontent.com/wiki/andersonjoseph/jailed-agents/Examples.md): a Go development environment
 - [API Reference](https://raw.githubusercontent.com/wiki/andersonjoseph/jailed-agents/API-Reference.md): all builders, options, and defaults
 
@@ -44,7 +44,7 @@ It is built on [jail.nix](https://alexdav.id/projects/jail-nix/) and `bubblewrap
 
 - [Customization](https://github.com/andersonjoseph/jailed-agents/wiki/Customization) — change packages, names, mounts, and environment
 - [Git Worktrees](https://github.com/andersonjoseph/jailed-agents/wiki/Git-Worktrees) — run the agent inside git worktrees
-- [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations) — open URLs on the host, run under herdr, give Nix access
+- [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations) — open URLs on the host, browse in your real browser, run under herdr, give Nix access
 - [Examples](https://github.com/andersonjoseph/jailed-agents/wiki/Examples) — a Go development environment
 
 **Reference**
@@ -125,7 +125,7 @@ The `jailed-` prefix (for example `jailed-crush`) makes clear that you run a san
 ## Next steps
 
 - [Customization](https://github.com/andersonjoseph/jailed-agents/wiki/Customization) — change the package, the name, or the environment
-- [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations) — open URLs on the host, run under herdr, give Nix access
+- [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations) — open URLs on the host, browse in your real browser, run under herdr, give Nix access
 - [API Reference](https://github.com/andersonjoseph/jailed-agents/wiki/API-Reference) — see all options
 
 ---
@@ -304,7 +304,7 @@ The resolver binds the shared `.git` only when `$PWD` is a genuine git worktree.
 
 # Integrations
 
-This page shows how to connect jailed agents with the host: open URLs in a browser, run under herdr, and give Nix access.
+This page shows how to connect jailed agents with the host: open URLs in a browser, let agents use your real browser through browse, run under herdr, and give Nix access.
 
 ## Open URLs in the browser
 
@@ -327,6 +327,32 @@ Only `http://` and `https://` URLs are relayed. Anything else is dropped. No age
 The same permission is also available directly as `jailed-agents.lib.${system}.openUrls`. Compose it into `extraJailOptions` alongside other jail permissions. The permission bundles `xdg-utils` itself; nothing else is needed at the call site.
 
 One caveat: the jailed caller blocks until the host handler returns. When your browser inherits and holds the relayed stdout open, the call can hang. Retry, or open the printed URL manually.
+
+## Let the agent use your real browser
+
+[browse](https://opencode.ai/product/browse) is an MCP server plus a Chromium extension. The agent gets tabs in your real browser — your logins, your extensions — opened in the background and grouped out of your way. When a step needs a person (login, 2FA, captcha), it hands the tab back to you.
+
+`enableBrowse = true` wires the jail for it:
+
+```nix
+(jailed-agents.lib.${system}.makeJailedOpencode2 {
+  enableBrowse = true;
+})
+```
+
+It adds the `browse` CLI to the jail and mounts `~/.local/share/browse` and `~/.local/state/browse` read-write: relay token, pairing state, logs. Nothing else is needed. The relay listens on `127.0.0.1:19988` and jails share the host network. The browser, its profile, and its logins stay outside the jail; only the relay token crosses.
+
+Two one-time steps on the host: pair the extension (`browse pair` prints a code to enter in the extension's options), and add the MCP server to the agent's own config — for opencode, `"command": ["browse", "mcp"]` in `~/.config/opencode/opencode.jsonc`.
+
+The same package is exported as `packages.${system}.browse`, so the host can run `browse` admin commands (`pair`, `status`) without a second definition. Version bumps for both sides happen in jailed-agents:
+
+```bash
+nix run nixpkgs#nix-update -- -F browse --version "$(curl -s https://registry.npmjs.org/@opencode%2fbrowse-linux-x64 | jq -r '."dist-tags".latest')"
+```
+
+Your own browse build works too: `enableBrowse = true; browsePkg = myBrowse;` replaces the vendored binary.
+
+> **Warning:** one relay serves the machine, and its token sits inside every jail that enables this. Any such agent can drive the same paired browser: read pages, use your logins. `allowedOrigins` limits a tab to named sites; the jail boundary stays per-agent, the browse boundary is per-machine. Enable this only for agents you trust with your browser.
 
 ## Run under herdr
 
@@ -436,6 +462,8 @@ makeJailed<AgentName> {
   extraPkgs ? [],
   extraJailOptions ? [],
   enableOpenUrls ? false,
+  enableBrowse ? false,
+  browsePkg ? browse-pkg,
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
@@ -458,6 +486,8 @@ makeJailedAgent {
   extraPkgs ? [],
   extraJailOptions ? [],
   enableOpenUrls ? false,
+  enableBrowse ? false,
+  browsePkg ? browse-pkg,
   extraReadwriteDirs ? [],
   extraReadonlyDirs ? [],
   env ? {},
@@ -488,8 +518,14 @@ makeJailedAgent {
 - **`nixConfigDir`**: Mounts a NixOS/system config directory into the jail so the agent can read (or edit) the declaration. Pass a path string to mount it read-only (for example `"/etc/nixos"`), or `{ path = "/etc/nixos"; writable = true; }` to mount it read-write. Defaults to `null` (nothing mounted). Independent of `enableNix`. See [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations).
 - **`enableGitWorktrees`**: Mounts the shared `.git` directory when the agent is launched from inside a git worktree, so git commands work. `{ enable = true; }` is enough to work inside an existing worktree; `dir` lets the agent create new worktrees there (sugar for `extraReadwriteDirs`), and `mountGitConfig = true` mounts `~/.gitconfig` read-only, tolerating its absence. Defaults to `{ }`. See [Git Worktrees](https://github.com/andersonjoseph/jailed-agents/wiki/Git-Worktrees).
 - **`enableOpenUrls`**: When `true`, adds the `openUrls` permission: `xdg-utils` in the jail plus a relay that opens `http(s)://` URLs on the host. Defaults to `false`. See [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations).
+- **`enableBrowse`**: When `true`, adds the `browse` CLI and mounts `~/.local/share/browse` and `~/.local/state/browse` read-write, so the agent can run the browse MCP server against your real browser. Defaults to `false`. See [Integrations](https://github.com/andersonjoseph/jailed-agents/wiki/Integrations).
+- **`browsePkg`**: The package `enableBrowse` adds. Defaults to the vendored `browse` package from `packages.${system}.browse`; pass your own build to override it. No effect unless `enableBrowse` is `true`.
 - **`baseJailOptions`**: Overrides the default set of jail options.
 - **`basePackages`**: Overrides the default set of base packages.
+
+## Packages
+
+- **`browse`** (`packages.${system}.browse`): the [browse](https://opencode.ai/product/browse) CLI used by `enableBrowse`, also available for host-side admin such as `browse pair` and `browse status`.
 
 ## What is included by default
 

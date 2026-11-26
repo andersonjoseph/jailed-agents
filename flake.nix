@@ -68,6 +68,8 @@
             ;
         };
 
+        browse-pkg = pkgs.callPackage ./packages/browse.nix { };
+
         makeJailedAgent =
           {
             name,
@@ -81,6 +83,8 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
+            enableBrowse ? false,
+            browsePkg ? browse-pkg,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -123,8 +127,15 @@
               ++ pkgs.lib.optional (
                 resolvedNixConfigDir != null && resolvedNixConfigDir.writable
               ) resolvedNixConfigDir.path
+              ++ pkgs.lib.optionals enableBrowse [
+                "~/.local/share/browse"
+                "~/.local/state/browse"
+              ]
               ++ gitWorktrees.readwriteDirs;
-            extraPackages = extraPkgs ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs;
+            extraPackages =
+              extraPkgs
+              ++ pkgs.lib.optionals enableNix nixDaemonAccess.pkgs
+              ++ pkgs.lib.optionals enableBrowse [ browsePkg ];
 
             guardedJail =
               pkg':
@@ -190,6 +201,8 @@
             fwdEnv ? [ ],
             enableGitWorktrees ? { },
             enableOpenUrls ? false,
+            enableBrowse ? false,
+            browsePkg ? browse-pkg,
             nixConfigDir ? null,
             baseJailOptions ? commonJailOptions,
             basePackages ? commonPkgs,
@@ -202,6 +215,8 @@
               name
               pkg
               enableOpenUrls
+              enableBrowse
+              browsePkg
               extraReadwriteDirs
               extraReadonlyDirs
               enableNix
@@ -251,6 +266,7 @@
         };
 
         packages = {
+          browse = browse-pkg;
           jailed-claude-code = agents.makeJailedClaudeCode { };
           jailed-codex = agents.makeJailedCodex { };
           jailed-crush = agents.makeJailedCrush { };
